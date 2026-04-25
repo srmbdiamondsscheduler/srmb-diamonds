@@ -1076,6 +1076,24 @@ function lastName(s){
 function divAbbr(s){
   return (s||'').replace(/\s*(Baseball|Softball)\s*/i,'').trim();
 }
+// Returns true for young divisions that do NOT block D2-CF
+function isYoungDivision(b){
+  const txt=((b.division||'')+' '+(b.teamName||'')).toLowerCase();
+  return /\b(ltp|rally\s*cap|9u|u9)\b/.test(txt);
+}
+// Returns true if D2-CF should be blocked on a given date
+// (D2 Main has an approved 11U+ booking)
+function isD2CFBlocked(date){
+  return loadBK().some(b=>
+    b.date===date && b.diamond==='D2' && b.status==='approved' &&
+    b.bkType!=='FieldClosure' && !isYoungDivision(b)
+  );
+}
+// Best label for a booking — use current DIAMONDS label if available
+function bestLabel(diamond, dLabel){
+  const dia=DIAMONDS.find(d=>d.id===diamond);
+  return (dia&&dia.label)||dLabel||diamond;
+}
 // Short calendar chip label — keeps chip text tight on small screens
 function fieldShort(diamond, dLabel){
   const dia=DIAMONDS.find(d=>d.id===diamond);
@@ -1156,7 +1174,7 @@ function _doRenderCal(gridId, labelId){
       const div=divAbbr(b.division);
       const lname=lastName(b.contact);
       const isPend=b.status==='pending';
-      chips+=`<div class="cal-bk-item${isPend?' pend':''}" style="${isPend?'':'border-left-color:'+color}" title="${b.teamName} — ${b.dLabel} — ${fmt12(b.start)}–${fmt12(b.end)}${isPend?' (pending approval)':''}">`+
+      chips+=`<div class="cal-bk-item${isPend?' pend':''}" style="${isPend?'':'border-left-color:'+color}" title="${b.teamName} — ${bestLabel(b.diamond,b.dLabel)} — ${fmt12(b.start)}–${fmt12(b.end)}${isPend?' (pending approval)':''}">`+
              `<span class="cal-bk-t">${isPend?'⏳ ':''}${dNum}</span>`+
              `<span class="cal-bk-d"> ${[time,div,lname].filter(Boolean).join(' · ')}</span>`+
              `</div>`;
@@ -1192,6 +1210,7 @@ function pickDay(ds){
 function renderDayDetail(ds){
   document.getElementById('ddTitle').textContent = fmtLong(ds);
   const bks=loadBK().filter(b=>b.date===ds&&b.status!=='denied');
+  const d2cfBlocked=isD2CFBlocked(ds);
 
   let rows='';
   let lastSection='';
@@ -1219,8 +1238,11 @@ function renderDayDetail(ds){
 
     const diaBks=bks.filter(b=>b.diamond===dia.id);
     const hasApproved=diaBks.some(b=>b.status==='approved');
+    const isD2CFblockedHere=dia.id==='D2S'&&d2cfBlocked;
     const statusCell=hasApproved
       ?`<span class="avail-no">Booked</span>`
+      :isD2CFblockedHere
+      ?`<span class="avail-no" title="D2 Main is booked by 11U+ — CF field unavailable">⛔ Blocked</span>`
       :`<span class="avail-yes">Available</span>`;
 
     let chips='<span style="color:var(--dgray);font-size:.78rem">None</span>';
@@ -1245,7 +1267,9 @@ function renderDayDetail(ds){
       <td>${chips}</td>
       <td style="white-space:nowrap">${statusCell}</td>
       <td style="white-space:nowrap">
-        <button class="btn btn-p btn-sm" onclick="bookFromDayField('${ds}','${dia.id}')">+ Book</button>
+        ${isD2CFblockedHere
+          ?`<button class="btn btn-sm" disabled style="opacity:.4;cursor:not-allowed">+ Book</button>`
+          :`<button class="btn btn-p btn-sm" onclick="bookFromDayField('${ds}','${dia.id}')">+ Book</button>`}
       </td>
     </tr>`;
   });
@@ -1336,6 +1360,8 @@ function buildPicker(){
   const allBks=loadBK().filter(b=>b.date===S.reqDate&&b.status==='approved');
   const busy=new Set(allBks.filter(b=>b.bkType!=='FieldClosure').map(b=>b.diamond));
   const closed=new Set(allBks.filter(b=>b.bkType==='FieldClosure').map(b=>b.diamond));
+  // D2-CF blocked when D2 Main has an 11U+ booking
+  if(isD2CFBlocked(S.reqDate)) closed.add('D2S');
 
   const sections=[
     {label:'Diamonds #1 · #6 · #7',                                   ids:['D1','D6','D7']},
