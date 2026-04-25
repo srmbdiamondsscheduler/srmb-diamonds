@@ -303,6 +303,26 @@
         <button class="icon-btn" onclick="shiftMonth(1)">&#8250;</button>
       </div>
     </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0 6px;font-size:.8rem">
+      <select id="calFiltStatus" onchange="S.calFiltStatus=this.value;renderCal()"
+        style="border:1.5px solid var(--mid);border-radius:7px;padding:4px 8px;font-family:inherit;font-size:.8rem;color:var(--navy)">
+        <option value="">All statuses</option>
+        <option value="approved">Approved only</option>
+        <option value="pending">Pending only</option>
+      </select>
+      <label style="color:var(--dgray);font-size:.78rem;white-space:nowrap">From</label>
+      <input type="date" id="calFiltFrom" onchange="S.calFiltFrom=this.value;renderCal()"
+        style="border:1.5px solid var(--mid);border-radius:7px;padding:4px 8px;font-family:inherit;font-size:.8rem">
+      <label style="color:var(--dgray);font-size:.78rem;white-space:nowrap">To</label>
+      <input type="date" id="calFiltTo" onchange="S.calFiltTo=this.value;renderCal()"
+        style="border:1.5px solid var(--mid);border-radius:7px;padding:4px 8px;font-family:inherit;font-size:.8rem">
+      <button class="btn btn-sm btn-o" style="font-size:.75rem;padding:4px 10px"
+        onclick="S.calFiltStatus='';S.calFiltFrom='';S.calFiltTo='';
+                 document.getElementById('calFiltStatus').value='';
+                 document.getElementById('calFiltFrom').value='';
+                 document.getElementById('calFiltTo').value='';
+                 renderCal()">Clear</button>
+    </div>
     <div class="cal-grid" id="calGrid"></div>
     <div style="display:flex;flex-wrap:wrap;gap:16px;margin-top:12px;font-size:.77rem;color:var(--dgray);align-items:center">
       <span>&#8592; Click any day to see all fields and their availability</span>
@@ -788,15 +808,15 @@ const DIAMONDS = [
   { id:'D6',    label:'Diamond #6',       section:'Optimist Park',  group:'other',   color:'#c0392b' },
   { id:'D7',    label:'Diamond #7',       section:'Optimist Park',  group:'other',   color:'#273746' },
   // ── Diamond #3 complex ────────────────────────────────────────────────────
-  { id:'D3',    label:'Diamond #3',       section:'Optimist Park',  group:'c3',      color:'#7d3c98', isMain:true },
+  { id:'D3',    label:'Diamond #3 (Main)', section:'Optimist Park',  group:'c3',      color:'#7d3c98', isMain:true },
   { id:'D3LF',  label:'Diamond #3 LF',    section:'Optimist Park',  group:'c3',      color:'#9b59b6', mainOf:'D3' },
   { id:'D3RF',  label:'Diamond #3 RF',    section:'Optimist Park',  group:'c3',      color:'#9b59b6', mainOf:'D3' },
   // ── Diamond #4 complex ────────────────────────────────────────────────────
-  { id:'D4',    label:'Diamond #4',       section:'Optimist Park',  group:'c4',      color:'#1f618d', isMain:true },
+  { id:'D4',    label:'Diamond #4 (Main)', section:'Optimist Park',  group:'c4',      color:'#1f618d', isMain:true },
   { id:'D4LF',  label:'Diamond #4 LF',    section:'Optimist Park',  group:'c4',      color:'#2980b9', mainOf:'D4' },
   { id:'D4RF',  label:'Diamond #4 RF',    section:'Optimist Park',  group:'c4',      color:'#2980b9', mainOf:'D4' },
   // ── Diamond #5 complex ────────────────────────────────────────────────────
-  { id:'D5',    label:'Diamond #5',       section:'Optimist Park',  group:'c5',      color:'#1a7a3c', isMain:true },
+  { id:'D5',    label:'Diamond #5 (Main)', section:'Optimist Park',  group:'c5',      color:'#1a7a3c', isMain:true },
   { id:'D5LF',  label:'Diamond #5 LF',    section:'Optimist Park',  group:'c5',      color:'#27ae60', mainOf:'D5' },
   { id:'D5RF',  label:'Diamond #5 RF',    section:'Optimist Park',  group:'c5',      color:'#27ae60', mainOf:'D5' },
   // ── Other bookable areas at Optimist Park ─────────────────────────────────
@@ -1043,6 +1063,7 @@ const S = {
   rYr:new Date().getFullYear(), rMo:new Date().getMonth(),
   selDate:null, reqDate:null, reqDiamond:null, start:null, end:null,
   wkOff:0, schedFilt:'all', adminIn:false,
+  calFiltStatus:'', calFiltFrom:'', calFiltTo:'',
 };
 
 // ─── NAV ────────────────────────────────────────
@@ -1143,9 +1164,18 @@ function _doRenderCal(gridId, labelId){
   const last =new Date(S.yr,S.mo+1,0).getDate();
   const bks  =loadBK();
 
-  // Group non-denied bookings by date
+  // Group non-denied bookings by date, applying calendar filters
   const byDate={};
-  bks.filter(b=>b.status!=='denied').forEach(b=>{
+  bks.filter(b=>{
+    if(b.status==='denied') return false;
+    // Only apply status/date filters to the public calendar (not admin cal)
+    if(gridId==='calGrid'){
+      if(S.calFiltStatus && b.status!==S.calFiltStatus) return false;
+      if(S.calFiltFrom && b.date<S.calFiltFrom) return false;
+      if(S.calFiltTo   && b.date>S.calFiltTo)   return false;
+    }
+    return true;
+  }).forEach(b=>{
     if(!byDate[b.date]) byDate[b.date]=[];
     byDate[b.date].push(b);
   });
