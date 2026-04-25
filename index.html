@@ -626,6 +626,26 @@
           <button class="icon-btn" onclick="shiftMonth(1)">&#8250;</button>
         </div>
       </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0 6px;font-size:.8rem">
+        <select id="aCalFiltStatus" onchange="S.aCalFiltStatus=this.value;renderCal()"
+          style="border:1.5px solid var(--mid);border-radius:7px;padding:4px 8px;font-family:inherit;font-size:.8rem;color:var(--navy)">
+          <option value="">All statuses</option>
+          <option value="approved">Approved only</option>
+          <option value="pending">Pending only</option>
+        </select>
+        <label style="color:var(--dgray);font-size:.78rem;white-space:nowrap">From</label>
+        <input type="date" id="aCalFiltFrom" onchange="S.aCalFiltFrom=this.value;renderCal()"
+          style="border:1.5px solid var(--mid);border-radius:7px;padding:4px 8px;font-family:inherit;font-size:.8rem">
+        <label style="color:var(--dgray);font-size:.78rem;white-space:nowrap">To</label>
+        <input type="date" id="aCalFiltTo" onchange="S.aCalFiltTo=this.value;renderCal()"
+          style="border:1.5px solid var(--mid);border-radius:7px;padding:4px 8px;font-family:inherit;font-size:.8rem">
+        <button class="btn btn-sm btn-o" style="font-size:.75rem;padding:4px 10px"
+          onclick="S.aCalFiltStatus='';S.aCalFiltFrom='';S.aCalFiltTo='';
+                   document.getElementById('aCalFiltStatus').value='';
+                   document.getElementById('aCalFiltFrom').value='';
+                   document.getElementById('aCalFiltTo').value='';
+                   renderCal()">Clear</button>
+      </div>
       <div class="cal-grid" id="aCalGrid"></div>
       <div style="display:flex;flex-wrap:wrap;gap:16px;margin-top:10px;font-size:.77rem;color:var(--dgray);align-items:center">
         <span>&#8592; Click any day to see all fields and their availability</span>
@@ -1064,6 +1084,7 @@ const S = {
   selDate:null, reqDate:null, reqDiamond:null, start:null, end:null,
   wkOff:0, schedFilt:'all', adminIn:false,
   calFiltStatus:'', calFiltFrom:'', calFiltTo:'',
+  aCalFiltStatus:'', aCalFiltFrom:'', aCalFiltTo:'',
 };
 
 // ─── NAV ────────────────────────────────────────
@@ -1173,6 +1194,11 @@ function _doRenderCal(gridId, labelId){
       if(S.calFiltStatus && b.status!==S.calFiltStatus) return false;
       if(S.calFiltFrom && b.date<S.calFiltFrom) return false;
       if(S.calFiltTo   && b.date>S.calFiltTo)   return false;
+    }
+    if(gridId==='aCalGrid'){
+      if(S.aCalFiltStatus && b.status!==S.aCalFiltStatus) return false;
+      if(S.aCalFiltFrom && b.date<S.aCalFiltFrom) return false;
+      if(S.aCalFiltTo   && b.date>S.aCalFiltTo)   return false;
     }
     return true;
   }).forEach(b=>{
