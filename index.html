@@ -1233,7 +1233,7 @@ function renderDayDetail(ds){
     }
 
     const fieldNote=dia.mainOf
-      ?`<span style="font-size:.7rem;color:var(--dgray);margin-left:4px">&#9978; ${dia.label.includes('LF')?'Left field':'Right field'} section</span>`
+      ?`<span style="font-size:.7rem;color:var(--dgray);margin-left:4px">&#9978; ${dia.label.includes('LF')?'Left field section':dia.label.includes('RF')?'Right field section':'Center field area'}</span>`
       :'';
 
     rows+=`<tr class="field-row">
