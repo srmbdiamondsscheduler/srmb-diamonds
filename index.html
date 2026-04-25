@@ -1087,6 +1087,8 @@ function fieldShort(diamond, dLabel){
       if(suf==='LF') return `D${n}-LF`;
       if(suf==='RF') return `D${n}-RF`;
       if(suf==='S')  return `D${n}-CF`;
+      // If this main diamond has sub-fields, append -M to avoid ambiguity
+      if(dia.isMain && DIAMONDS.some(d=>d.mainOf===id)) return `D${n}-M`;
       return `D${n}`;
     }
     if(id==='PARK1') return 'LTP1';
