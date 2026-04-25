@@ -1,0 +1,2018 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SRMB Diamond Scheduler</title>
+  <style>
+    :root {
+      --navy:      #1a2f5a;
+      --navy-dk:   #122040;
+      --red:       #c0392b;
+      --bg:        #f0f4f8;
+      --mid:       #dde3ea;
+      --dgray:     #5a6478;
+      --text:      #1e2533;
+      --green:     #1a7a3c;
+      --green-bg:  #d4efdf;
+      --amber:     #b7770d;
+      --amber-bg:  #fdebd0;
+      --blue-bg:   #d6eaf8;
+      --blue-mid:  #1a6fa8;
+      --c3:#7d3c98; --c4:#1f618d; --c5:#1a7a3c;
+      --co:#c0392b;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;
+         background:var(--bg);color:var(--text);font-size:15px;line-height:1.5}
+    button{font-family:inherit;cursor:pointer}
+    input,select,textarea{font-family:inherit}
+
+    /* HEADER */
+    header{background:#111;color:#fff;box-shadow:0 2px 10px rgba(0,0,0,.5)}
+    .hdr-top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 20px}
+    .brand{display:flex;align-items:center;gap:14px}
+    .brand-logo{flex-shrink:0}
+    .brand-title{font-size:1.25rem;font-weight:900;line-height:1.1;
+                 letter-spacing:.04em;color:#3dff6e;text-transform:uppercase}
+    .brand-sub{font-size:.72rem;color:rgba(255,255,255,.55);margin-top:3px;letter-spacing:.06em;text-transform:uppercase}
+    .hdr-date{font-size:.78rem;opacity:.6;white-space:nowrap}
+    nav{display:flex;border-top:1px solid rgba(255,255,255,.1);overflow-x:auto}
+    nav button{background:none;border:none;border-bottom:3px solid transparent;
+               color:rgba(255,255,255,.65);padding:11px 22px;font-size:.875rem;font-weight:500;
+               white-space:nowrap;transition:color .15s,background .15s,border-color .15s}
+    nav button:hover{color:#fff;background:rgba(255,255,255,.06)}
+    nav button.active{color:#3DFF6E;border-bottom-color:#3DFF6E;background:rgba(61,255,110,.06)}
+
+    /* LAYOUT */
+    main{max-width:1080px;margin:0 auto;padding:20px 14px 48px}
+    .view{display:none}.view.active{display:block}
+
+    /* CARD */
+    .card{background:#fff;border-radius:14px;padding:22px;
+          box-shadow:0 2px 10px rgba(0,0,0,.07);margin-bottom:18px}
+    .card-title{font-size:1.05rem;font-weight:700;color:var(--navy);
+                padding-bottom:13px;border-bottom:2px solid var(--mid);margin-bottom:18px}
+
+    /* CALENDAR */
+    .cal-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+    .cal-label{font-size:1.05rem;font-weight:700;color:var(--navy)}
+    .icon-btn{width:34px;height:34px;border:1.5px solid var(--mid);border-radius:8px;
+              background:#fff;font-size:1.1rem;display:flex;align-items:center;
+              justify-content:center;transition:background .15s,border-color .15s}
+    .icon-btn:hover{background:var(--bg);border-color:var(--navy)}
+
+    .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+    .cal-dh{text-align:center;font-size:.7rem;font-weight:700;color:var(--dgray);
+            padding:6px 0;text-transform:uppercase;letter-spacing:.05em}
+    .cal-day{border-radius:9px;cursor:pointer;border:2px solid transparent;
+             transition:background .12s,border-color .12s;padding:5px 4px 6px;
+             min-height:96px;display:flex;flex-direction:column;align-items:stretch;
+             height:auto;min-width:0;overflow:hidden}
+    .cal-day:hover:not(.empty):not(.past){background:var(--bg);border-color:var(--navy)}
+    .cal-day.today{border-color:var(--red)}
+    .cal-day.selected{background:#e8eef8;border-color:var(--navy)}
+    .cal-day.past{opacity:.32;cursor:not-allowed;pointer-events:none}
+    .cal-day.empty{pointer-events:none}
+    .cal-dn{font-size:.88rem;font-weight:600;margin-bottom:3px;text-align:center}
+    .cal-day.today .cal-dn{color:var(--red)}
+    .cal-day.selected .cal-dn{color:var(--navy)}
+    .cal-bk-item{font-size:.6rem;line-height:1.3;padding:2px 4px 2px 5px;margin:1px 0;
+                 border-radius:3px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;
+                 color:var(--navy);background:rgba(0,0,0,.045);border-left:3px solid #aaa;
+                 min-width:0;max-width:100%;display:block}
+    .cal-bk-item.pend{background:#fef3cd;color:#7d5a00;border-left-style:dashed;font-style:italic;opacity:.9}
+    .cal-bk-item.closure{background:#fde8e8;color:#922b21;border-left-color:#c0392b !important;font-weight:700;border-left-style:solid !important}
+    .cal-bk-t{font-weight:700;margin-right:2px}
+    .cal-bk-d{color:#555}
+    .cal-bk-more{font-size:.57rem;color:var(--dgray);text-align:center;margin-top:2px}
+
+    /* DAY DETAIL */
+    #dayDetail{display:none}
+    .dd-title{font-size:1rem;font-weight:700;color:var(--navy);
+              display:flex;align-items:center;justify-content:space-between;
+              flex-wrap:wrap;gap:10px;margin-bottom:14px}
+    .dd-close{font-size:1.4rem;cursor:pointer;color:var(--dgray);line-height:1;
+              background:none;border:none;padding:2px 6px}
+    .dd-close:hover{color:var(--navy)}
+    .field-table{width:100%;border-collapse:collapse}
+    .field-table th{font-size:.71rem;font-weight:700;text-transform:uppercase;
+                    letter-spacing:.05em;color:var(--dgray);padding:7px 10px;
+                    border-bottom:2px solid var(--mid);text-align:left;background:#fafbfc}
+    .field-row{border-bottom:1px solid var(--mid);transition:background .1s}
+    .field-row:last-child{border-bottom:none}
+    .field-row:hover{background:#f7f9fc}
+    .field-row td{padding:9px 10px;vertical-align:middle;font-size:.85rem}
+    .field-name{font-weight:700;white-space:nowrap}
+    .field-badge{display:inline-block;width:10px;height:10px;border-radius:50%;
+                 margin-right:6px;vertical-align:middle;flex-shrink:0}
+    .sub-indent{padding-left:26px !important}
+    .avail-yes{color:var(--green);font-weight:600;font-size:.8rem}
+    .avail-no{color:#a93226;font-weight:600;font-size:.8rem}
+    .bk-chip{display:inline-block;padding:3px 9px;border-radius:6px;
+             font-size:.75rem;font-weight:600;color:#fff;margin:2px 3px 2px 0;white-space:nowrap}
+
+    /* PILL */
+    .pill{display:inline-block;padding:2px 8px;border-radius:10px;
+          font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+    .pill-p{background:#fef9c3;color:#713f12}
+    .pill-a{background:#dcfce7;color:#14532d}
+    .pill-d{background:#fee2e2;color:#7f1d1d}
+
+    /* STEPS */
+    .steps{display:flex;margin-bottom:24px;overflow-x:auto}
+    .step-i{flex:1;text-align:center;font-size:.74rem;color:var(--dgray);position:relative;min-width:55px}
+    .step-i::after{content:'›';position:absolute;right:-4px;top:8px;font-size:1.3rem;color:var(--mid);line-height:1}
+    .step-i:last-child::after{display:none}
+    .step-n{width:27px;height:27px;border-radius:50%;background:var(--mid);display:flex;
+            align-items:center;justify-content:center;font-weight:700;font-size:.8rem;
+            margin:0 auto 4px;transition:background .2s,color .2s}
+    .step-i.active{color:var(--navy);font-weight:600}
+    .step-i.active .step-n{background:var(--navy);color:#fff}
+    .step-i.done .step-n{background:var(--green);color:#fff}
+
+    /* DIAMOND PICKER */
+    .d-picker{display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:8px}
+    .d-opt{border:2px solid var(--mid);border-radius:9px;padding:10px 12px;
+           cursor:pointer;background:#fff;transition:border-color .12s,background .12s}
+    .d-opt:hover{border-color:var(--navy);background:#f0f4ff}
+    .d-opt.sel{border-color:var(--navy);background:#e8eef8}
+    .d-opt.d-closed{border-color:#e74c3c;background:#fdf2f2;cursor:not-allowed;opacity:.75}
+    .cl-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 11px;
+             border:1.5px solid var(--mid);border-radius:20px;cursor:pointer;
+             font-size:.78rem;background:#fff;transition:.12s;user-select:none}
+    .cl-chip input{display:none}
+    .cl-chip.on{border-color:var(--navy);background:#e8eef8;color:var(--navy);font-weight:700}
+    .d-opt-hdr{display:flex;align-items:center;gap:7px;margin-bottom:3px}
+    .d-dot{width:11px;height:11px;border-radius:50%;flex-shrink:0}
+    .d-name{font-weight:700;font-size:.9rem;color:var(--navy)}
+    .d-note{font-size:.7rem;color:var(--dgray);padding-left:18px}
+    .d-avail{display:inline-block;margin-top:5px;margin-left:18px;padding:2px 7px;
+             border-radius:4px;font-size:.67rem;font-weight:700;text-transform:uppercase}
+    .d-avail.y{background:#d5f5e3;color:#1a6b36}
+    .d-avail.n{background:#fadbd8;color:#922b21}
+    .d-section-lbl{grid-column:1/-1;font-size:.75rem;font-weight:700;text-transform:uppercase;
+                   letter-spacing:.06em;color:var(--dgray);padding:10px 2px 4px;
+                   border-bottom:1px solid var(--mid);margin-bottom:2px}
+
+    /* FORM */
+    .frow{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+    .fg{display:flex;flex-direction:column;gap:5px;margin-bottom:14px}
+    label{font-size:.82rem;font-weight:600;color:var(--dgray)}
+    input[type=text],input[type=tel],input[type=email],input[type=password],select,textarea{
+      border:2px solid var(--mid);border-radius:8px;padding:9px 11px;font-size:.92rem;
+      color:var(--text);width:100%;transition:border-color .15s;background:#fff}
+    input:focus,select:focus,textarea:focus{outline:none;border-color:var(--navy)}
+    input.err{border-color:var(--red)!important}
+    textarea{resize:vertical;min-height:72px}
+
+    /* BUTTONS */
+    .btn{display:inline-flex;align-items:center;gap:7px;padding:10px 20px;border:none;
+         border-radius:8px;font-size:.88rem;font-weight:600;cursor:pointer;
+         transition:background .15s,opacity .15s;white-space:nowrap}
+    .btn:disabled{opacity:.4;cursor:not-allowed}
+    .btn-p{background:var(--navy);color:#fff}.btn-p:hover:not(:disabled){background:var(--navy-dk)}
+    .btn-g{background:var(--green);color:#fff}.btn-g:hover:not(:disabled){background:#155f2e}
+    .btn-r{background:var(--red);color:#fff}.btn-r:hover:not(:disabled){background:#a93226}
+    .btn-o{background:#fff;color:var(--navy);border:2px solid var(--navy)}.btn-o:hover{background:var(--bg)}
+    .btn-sm{padding:5px 12px;font-size:.78rem}
+    .btn-row{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:18px;flex-wrap:wrap}
+
+    /* ALERTS */
+    .alert{padding:10px 13px;border-radius:8px;font-size:.85rem;margin-bottom:13px}
+    .a-info{background:var(--blue-bg);color:#154360;border-left:4px solid var(--blue-mid)}
+    .a-warn{background:var(--amber-bg);color:#7e5209;border-left:4px solid #e67e22}
+    .a-ok{background:var(--green-bg);color:#1a5e30;border-left:4px solid var(--green)}
+
+    /* SUMMARY */
+    .sbox{background:var(--bg);border-radius:10px;padding:13px 16px;margin-bottom:16px}
+    .srow{display:flex;justify-content:space-between;gap:12px;padding:6px 0;
+          border-bottom:1px solid var(--mid);font-size:.87rem}
+    .srow:last-child{border-bottom:none}
+    .slbl{color:var(--dgray);flex-shrink:0}.sval{font-weight:600;color:var(--navy);text-align:right}
+
+    /* SCHEDULE LIST */
+    .bk-item{display:flex;align-items:flex-start;gap:12px;padding:11px 13px;
+             border:1.5px solid var(--mid);border-radius:10px;margin-bottom:8px;background:#fff;
+             transition:box-shadow .15s}
+    .bk-item:hover{box-shadow:0 2px 8px rgba(0,0,0,.08)}
+    .bk-badge{min-width:50px;height:50px;border-radius:8px;display:flex;align-items:center;
+              justify-content:center;font-weight:700;font-size:.78rem;color:#fff;
+              text-align:center;flex-shrink:0;line-height:1.2}
+    .bk-info{flex:1;min-width:0}
+    .bk-team{font-weight:700;font-size:.92rem;color:var(--navy)}
+    .bk-meta{font-size:.78rem;color:var(--dgray);margin-top:3px;line-height:1.65}
+    .bk-acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}
+
+    .sched-ctrl{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+    .wk-label{font-weight:700;font-size:.9rem;min-width:210px;text-align:center}
+    .fbar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:13px}
+    .chip{padding:5px 13px;border-radius:20px;border:1.5px solid var(--mid);background:#fff;
+          font-size:.78rem;font-weight:600;cursor:pointer;color:var(--dgray);transition:all .12s}
+    .chip:hover,.chip.on{border-color:var(--navy);color:var(--navy);background:#edf0fb}
+    .day-block{margin-bottom:20px}
+    .day-lbl{font-size:.77rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;
+             color:var(--dgray);margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid var(--mid)}
+
+    .empty{text-align:center;padding:36px 20px;color:var(--dgray)}
+    .empty .ei{font-size:2.6rem;margin-bottom:9px}
+
+    /* MODAL */
+    .mbg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);
+         z-index:999;align-items:center;justify-content:center;padding:16px}
+    .mbg.open{display:flex}
+    .mbox{background:#fff;border-radius:16px;padding:28px;max-width:460px;width:100%;
+          max-height:90vh;overflow-y:auto;text-align:center}
+    .mbox h3{font-size:1.25rem;color:var(--navy);margin-bottom:10px}
+    .mbox p{font-size:.88rem;color:var(--dgray);line-height:1.6}
+    .mdetail{background:var(--bg);border-radius:8px;padding:10px 14px;
+             margin:14px 0;font-size:.83rem;color:var(--dgray);text-align:left}
+
+    .cnote{background:var(--amber-bg);border:1px solid #f0a500;border-radius:8px;
+           padding:9px 13px;font-size:.82rem;color:#7e5209;margin-bottom:11px}
+
+    @media(max-width:640px){
+      .frow{grid-template-columns:1fr}
+      .brand-title{font-size:1rem}
+      nav button{padding:10px 12px;font-size:.78rem}
+      .field-table{font-size:.78rem}
+      .cal-day{min-height:52px;padding:4px 3px 5px}
+    }
+    @media print{
+      header nav,.btn-row,.sched-ctrl,.fbar,.bk-acts,#view-admin{display:none!important}
+      .card{box-shadow:none;border:1px solid #ccc}
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="hdr-top">
+    <div class="brand">
+      <!-- Seine River Titans logo — SVG recreation of jersey branding -->
+      <div class="brand-logo">
+        <svg viewBox="0 0 56 60" width="52" height="56" xmlns="http://www.w3.org/2000/svg">
+          <!-- Outer diamond -->
+          <polygon points="28,1 55,30 28,59 1,30" fill="#3DFF6E"/>
+          <!-- Upper facet shading -->
+          <polygon points="28,1 55,30 28,30 1,30" fill="rgba(0,0,0,0.12)"/>
+          <!-- Lower facet shading -->
+          <polygon points="1,30 28,30 28,59" fill="rgba(255,255,255,0.07)"/>
+          <!-- T crossbar -->
+          <rect x="14" y="20" width="28" height="9" fill="#111" rx="1.5"/>
+          <!-- T stem -->
+          <rect x="23" y="20" width="10" height="22" fill="#111" rx="1.5"/>
+          <!-- Diamond facet lines from T corners -->
+          <line x1="14" y1="20" x2="1"  y2="30" stroke="#111" stroke-width="1" opacity="0.3"/>
+          <line x1="42" y1="20" x2="55" y2="30" stroke="#111" stroke-width="1" opacity="0.3"/>
+          <line x1="23" y1="42" x2="1"  y2="30" stroke="#111" stroke-width="1" opacity="0.2"/>
+          <line x1="33" y1="42" x2="55" y2="30" stroke="#111" stroke-width="1" opacity="0.2"/>
+        </svg>
+      </div>
+      <div>
+        <div style="font-size:.62rem;letter-spacing:.2em;color:rgba(255,255,255,.6);text-transform:uppercase;font-weight:600;margin-bottom:1px">Seine River</div>
+        <div style="font-size:1.7rem;font-weight:900;color:#3DFF6E;text-transform:uppercase;letter-spacing:.04em;font-style:italic;line-height:1">TITANS</div>
+        <div style="font-size:.6rem;letter-spacing:.12em;color:rgba(255,255,255,.38);text-transform:uppercase;margin-top:3px">Diamond Scheduler</div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+      <div class="hdr-date" id="hdrDate"></div>
+      <div id="connBadge" style="font-size:.7rem;padding:2px 8px;border-radius:10px;font-weight:600"></div>
+    </div>
+  </div>
+  <nav>
+    <button class="active" onclick="showView(this,'calendar')">📅 Calendar</button>
+    <button                onclick="showView(this,'request')">📋 Request a Booking</button>
+    <button                onclick="showView(this,'schedule')">📋 Schedule List</button>
+    <button                onclick="showView(this,'admin')">🔒 Admin</button>
+  </nav>
+</header>
+
+<main>
+
+<!-- ═══════════════════════════════════════
+     CALENDAR VIEW (default)
+════════════════════════════════════════ -->
+<div id="view-calendar" class="view active">
+  <div class="card">
+    <div class="cal-hdr">
+      <span class="cal-label" id="calLabel"></span>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="icon-btn" onclick="shiftMonth(-1)">&#8249;</button>
+        <button class="btn btn-o btn-sm" onclick="jumpToday()">Today</button>
+        <button class="icon-btn" onclick="shiftMonth(1)">&#8250;</button>
+      </div>
+    </div>
+    <div class="cal-grid" id="calGrid"></div>
+    <div style="display:flex;flex-wrap:wrap;gap:16px;margin-top:12px;font-size:.77rem;color:var(--dgray);align-items:center">
+      <span>&#8592; Click any day to see all fields and their availability</span>
+      <span style="display:flex;align-items:center;gap:4px">
+        <span style="width:9px;height:9px;background:var(--red);border-radius:50%;display:inline-block"></span>Today's border
+      </span>
+      <span style="display:flex;align-items:center;gap:4px">
+        <span style="width:9px;height:9px;background:var(--c3);border-radius:50%;display:inline-block"></span>#3 Complex
+        <span style="width:9px;height:9px;background:var(--c4);border-radius:50%;display:inline-block;margin-left:6px"></span>#4 Complex
+        <span style="width:9px;height:9px;background:var(--c5);border-radius:50%;display:inline-block;margin-left:6px"></span>#5 Complex
+        <span style="width:9px;height:9px;background:var(--co);border-radius:50%;display:inline-block;margin-left:6px"></span>Other fields
+      </span>
+    </div>
+  </div>
+
+  <!-- Day detail panel -->
+  <div class="card" id="dayDetail">
+    <div class="dd-title">
+      <span id="ddTitle"></span>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <button class="btn btn-p btn-sm" onclick="bookFromDay()">+ Request a Booking for This Day</button>
+        <button class="dd-close" onclick="closeDay()" title="Close">&times;</button>
+      </div>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="field-table">
+        <thead>
+          <tr>
+            <th style="min-width:140px">Field</th>
+            <th>Bookings This Day</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="fieldRows"></tbody>
+      </table>
+    </div>
+    <p style="font-size:.75rem;color:var(--dgray);margin-top:10px">
+      &#9978; = Outfield section using temporary fencing within a larger diamond &mdash; ideal for younger players.
+      &nbsp;&#9203; = Pending approval (yellow, dashed border) &nbsp;&bull;&nbsp; Solid colour = Approved.
+    </p>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════
+     REQUEST VIEW
+════════════════════════════════════════ -->
+<div id="view-request" class="view">
+  <div class="card">
+    <div class="card-title">📋 Request a Diamond Booking</div>
+
+    <div class="steps">
+      <div class="step-i active" id="si-1"><div class="step-n">1</div>Pick Date</div>
+      <div class="step-i"        id="si-2"><div class="step-n">2</div>Diamond</div>
+      <div class="step-i"        id="si-3"><div class="step-n">3</div>Time</div>
+      <div class="step-i"        id="si-4"><div class="step-n">4</div>Details</div>
+      <div class="step-i"        id="si-5"><div class="step-n">5</div>Confirm</div>
+    </div>
+
+    <!-- Step 1 -->
+    <div id="sc-1">
+      <div class="cal-hdr">
+        <span class="cal-label" id="reqCalLabel"></span>
+        <div style="display:flex;gap:6px">
+          <button class="icon-btn" onclick="shiftReqMonth(-1)">&#8249;</button>
+          <button class="icon-btn" onclick="shiftReqMonth(1)">&#8250;</button>
+        </div>
+      </div>
+      <div class="cal-grid" id="reqCalGrid"></div>
+      <p style="margin-top:10px;font-size:.78rem;color:var(--dgray)">Select the date you'd like to book. Red dot = existing approved bookings.</p>
+    </div>
+
+    <!-- Step 2 – diamond picker, all together -->
+    <div id="sc-2" style="display:none">
+      <div class="alert a-info" id="s2date"></div>
+      <p style="font-size:.84rem;color:var(--dgray);margin-bottom:14px">
+        Select any available field. &#9978; LF/RF fields use temporary fencing in the left or right field of a larger diamond — perfect for younger players.
+      </p>
+      <div id="dPicker" class="d-picker"></div>
+      <div class="btn-row">
+        <button class="btn btn-o" onclick="goStep(1)">&#8592; Back</button>
+        <button class="btn btn-p" id="btnD2" onclick="goStep(3)" disabled>Continue &#8594;</button>
+      </div>
+    </div>
+
+    <!-- Step 3 – time -->
+    <div id="sc-3" style="display:none">
+      <div class="alert a-info" id="s3info"></div>
+      <div id="cNotes"></div>
+      <div class="frow">
+        <div class="fg"><label>Start Time *</label>
+          <select id="selS" onchange="chkTime()"><option value="">— Start —</option></select></div>
+        <div class="fg"><label>End Time *</label>
+          <select id="selE" onchange="chkTime()"><option value="">— End —</option></select></div>
+      </div>
+      <div class="fg"><label>Booking Type *</label>
+        <select id="selT">
+          <option value="Practice">Practice</option>
+          <option value="Game">Game</option>
+          <option value="Tournament">Tournament</option>
+          <option value="Special Event">Special Event</option>
+        </select></div>
+      <div class="btn-row">
+        <button class="btn btn-o" onclick="goStep(2)">&#8592; Back</button>
+        <button class="btn btn-p" id="btnD3" onclick="goStep(4)" disabled>Continue &#8594;</button>
+      </div>
+    </div>
+
+    <!-- Step 4 – contact -->
+    <div id="sc-4" style="display:none">
+      <div class="frow">
+        <div class="fg"><label>Team / Organization Name *</label>
+          <input id="fTeam" type="text" placeholder="e.g. Cubs U8 – Team 2"></div>
+        <div class="fg"><label>Division / Age Group *</label>
+          <select id="fDiv">
+            <option value="">— Select —</option>
+            <optgroup label="⚾ Baseball">
+              <option>Rally Cap</option>
+              <option>9U Baseball</option>
+              <option>11U Baseball</option>
+              <option>13U Baseball</option>
+              <option>15U Baseball</option>
+              <option>18U Baseball</option>
+              <option>22U Baseball</option>
+            </optgroup>
+            <optgroup label="🥎 Softball">
+              <option>LTP1 Softball</option>
+              <option>LTP2 Softball</option>
+              <option>U9 Softball</option>
+              <option>U11 Softball</option>
+              <option>U13 Softball</option>
+              <option>U15 Softball</option>
+              <option>U19 Softball</option>
+            </optgroup>
+            <optgroup label="Other">
+              <option>Adult / Senior</option>
+              <option>Other</option>
+            </optgroup>
+          </select></div>
+      </div>
+      <div class="frow">
+        <div class="fg"><label>Contact Name *</label>
+          <input id="fName" type="text" placeholder="Your full name"></div>
+        <div class="fg"><label>Phone *</label>
+          <input id="fPhone" type="tel" placeholder="204-555-1234"></div>
+      </div>
+      <div class="fg"><label>Email *</label>
+        <input id="fEmail" type="email" placeholder="you@example.com"></div>
+      <div class="fg"><label>Additional Notes (optional)</label>
+        <textarea id="fNotes" placeholder="Equipment needs, special requirements, etc."></textarea></div>
+      <div class="btn-row">
+        <button class="btn btn-o" onclick="goStep(3)">&#8592; Back</button>
+        <button class="btn btn-p" onclick="goStep(5)">Review &#8594;</button>
+      </div>
+    </div>
+
+    <!-- Step 5 – confirm -->
+    <div id="sc-5" style="display:none">
+      <h3 style="font-size:.98rem;font-weight:700;color:var(--navy);margin-bottom:13px">Review Your Request</h3>
+      <div class="sbox" id="sBox"></div>
+      <div class="alert a-warn"><strong>Pending approval.</strong> Your request will be reviewed by the SRMB scheduler. You will be contacted if there is a conflict.</div>
+      <div class="btn-row">
+        <button class="btn btn-o" onclick="goStep(4)">&#8592; Back</button>
+        <button class="btn btn-g" onclick="submitBk()">&#10003; Submit Request</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════
+     SCHEDULE LIST VIEW
+════════════════════════════════════════ -->
+<div id="view-schedule" class="view">
+  <div class="card">
+    <div class="card-title">📋 Full Schedule List</div>
+    <div class="sched-ctrl">
+      <button class="icon-btn" onclick="shiftWk(-1)">&#8249;</button>
+      <span class="wk-label" id="wkLabel"></span>
+      <button class="icon-btn" onclick="shiftWk(1)">&#8250;</button>
+      <button class="btn btn-o btn-sm" onclick="resetWk()">Today</button>
+      <button class="btn btn-o btn-sm" onclick="window.print()">&#128424; Print</button>
+    </div>
+    <p style="font-size:.82rem;color:var(--dgray);margin-bottom:7px">Filter by diamond group:</p>
+    <div class="fbar" id="fBar"></div>
+    <div id="schedContent"></div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════
+     ADMIN VIEW
+════════════════════════════════════════ -->
+<div id="view-admin" class="view">
+  <div class="card" id="adminLoginCard">
+    <div class="card-title">&#128274; Admin Login</div>
+    <div class="fg" style="max-width:300px">
+      <label>Password</label>
+      <input type="password" id="adminPw" placeholder="Enter admin password"
+             onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button class="btn btn-p" onclick="doLogin()">Login</button>
+  </div>
+  <div id="adminPanel" style="display:none">
+    <div class="card" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+      <span style="font-weight:700;font-size:1rem;color:var(--navy)">&#9881;&#65039; Admin Panel</span>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-o btn-sm" onclick="exportCSV()">&#128229; Export CSV</button>
+        <button class="btn btn-r btn-sm" onclick="doLogout()">Logout</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">⛔ Mark Fields Unplayable</div>
+      <p style="font-size:.83rem;color:var(--dgray);margin-bottom:16px">
+        Select one or more fields, a date range, and which days of the week apply. All selected fields will be blocked for every matching day.
+      </p>
+
+      <!-- Fields -->
+      <div style="margin-bottom:14px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px">
+          <label style="font-size:.78rem;font-weight:600;color:var(--navy)">Fields to close</label>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-sm" style="font-size:.72rem;padding:3px 9px" onclick="selectAllClosureFields(true)">Select all</button>
+            <button class="btn btn-sm" style="font-size:.72rem;padding:3px 9px" onclick="selectAllClosureFields(false)">Clear</button>
+          </div>
+        </div>
+        <div id="closureFieldChips" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+      </div>
+
+      <!-- Date range -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+        <div>
+          <label style="font-size:.78rem;font-weight:600;color:var(--navy);display:block;margin-bottom:4px">From date</label>
+          <input type="date" id="closeDateFrom" onchange="updateClosurePreview()" style="width:100%">
+        </div>
+        <div>
+          <label style="font-size:.78rem;font-weight:600;color:var(--navy);display:block;margin-bottom:4px">To date</label>
+          <input type="date" id="closeDateTo" onchange="updateClosurePreview()" style="width:100%">
+        </div>
+      </div>
+
+      <!-- Days of week -->
+      <div style="margin-bottom:14px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px">
+          <label style="font-size:.78rem;font-weight:600;color:var(--navy)">Days of week</label>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-sm" style="font-size:.72rem;padding:3px 9px" onclick="selectAllClosureDays('all')">All</button>
+            <button class="btn btn-sm" style="font-size:.72rem;padding:3px 9px" onclick="selectAllClosureDays('weekdays')">Weekdays</button>
+            <button class="btn btn-sm" style="font-size:.72rem;padding:3px 9px" onclick="selectAllClosureDays('weekends')">Weekends</button>
+          </div>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          <label class="cl-chip" id="cday-0"><input type="checkbox" value="0" onchange="updateClosurePreview()"><span>Sun</span></label>
+          <label class="cl-chip on" id="cday-1"><input type="checkbox" value="1" checked onchange="updateClosurePreview()"><span>Mon</span></label>
+          <label class="cl-chip on" id="cday-2"><input type="checkbox" value="2" checked onchange="updateClosurePreview()"><span>Tue</span></label>
+          <label class="cl-chip on" id="cday-3"><input type="checkbox" value="3" checked onchange="updateClosurePreview()"><span>Wed</span></label>
+          <label class="cl-chip on" id="cday-4"><input type="checkbox" value="4" checked onchange="updateClosurePreview()"><span>Thu</span></label>
+          <label class="cl-chip on" id="cday-5"><input type="checkbox" value="5" checked onchange="updateClosurePreview()"><span>Fri</span></label>
+          <label class="cl-chip" id="cday-6"><input type="checkbox" value="6" onchange="updateClosurePreview()"><span>Sat</span></label>
+        </div>
+      </div>
+
+      <!-- Time range -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+        <div>
+          <label style="font-size:.78rem;font-weight:600;color:var(--navy);display:block;margin-bottom:4px">From time</label>
+          <select id="closeStart" style="width:100%"></select>
+        </div>
+        <div>
+          <label style="font-size:.78rem;font-weight:600;color:var(--navy);display:block;margin-bottom:4px">To time</label>
+          <select id="closeEnd" style="width:100%"></select>
+        </div>
+      </div>
+
+      <!-- Reason -->
+      <div style="margin-bottom:16px">
+        <label style="font-size:.78rem;font-weight:600;color:var(--navy);display:block;margin-bottom:4px">Reason <span style="font-weight:400;color:var(--dgray)">(optional)</span></label>
+        <input type="text" id="closeNote" placeholder="e.g. Fields too wet after heavy rain"
+          style="width:100%;border:1.5px solid var(--mid);border-radius:8px;padding:8px 11px;font-family:inherit;font-size:.88rem">
+      </div>
+
+      <!-- Preview + submit -->
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+        <div id="closurePreview" style="font-size:.82rem;color:var(--dgray);font-style:italic">Select fields and dates above.</div>
+        <button class="btn btn-r" onclick="markFieldClosed()">⛔ Mark as Unplayable</button>
+      </div>
+    </div>
+    <!-- Admin Calendar -->
+    <div class="card">
+      <div class="cal-hdr">
+        <span class="cal-label" id="aCalLabel"></span>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="icon-btn" onclick="shiftMonth(-1)">&#8249;</button>
+          <button class="btn btn-o btn-sm" onclick="jumpToday()">Today</button>
+          <button class="icon-btn" onclick="shiftMonth(1)">&#8250;</button>
+        </div>
+      </div>
+      <div class="cal-grid" id="aCalGrid"></div>
+      <div style="display:flex;flex-wrap:wrap;gap:16px;margin-top:10px;font-size:.77rem;color:var(--dgray);align-items:center">
+        <span>&#8592; Click any day to see all fields and their availability</span>
+        <span style="display:flex;align-items:center;gap:4px">
+          <span style="width:9px;height:9px;background:var(--c3);border-radius:50%;display:inline-block"></span>#3 Complex
+          <span style="width:9px;height:9px;background:var(--c4);border-radius:50%;display:inline-block;margin-left:6px"></span>#4 Complex
+          <span style="width:9px;height:9px;background:var(--c5);border-radius:50%;display:inline-block;margin-left:6px"></span>#5 Complex
+        </span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Pending Requests</div>
+      <div id="pendingList"></div>
+    </div>
+    <div class="card">
+      <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+        All Bookings
+        <button class="btn btn-o btn-sm" style="border-color:var(--navy);color:var(--navy);font-size:.78rem" onclick="clearCacheResync()">&#8635; Clear Cache &amp; Resync</button>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;align-items:center">
+        <select id="aFiltD" onchange="renderAdmin()" style="max-width:220px"><option value="">All Diamonds</option></select>
+        <select id="aFiltS" onchange="renderAdmin()" style="max-width:160px">
+          <option value="">All Statuses</option>
+          <option value="pending">Pending</option>
+          <option value="approved">Approved</option>
+          <option value="denied">Denied</option>
+        </select>
+        <select id="aFiltT" onchange="renderAdmin()" style="max-width:160px">
+          <option value="">All Types</option>
+          <option value="booking">Bookings only</option>
+          <option value="closure">Closures only</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
+        <label style="font-size:.8rem;display:flex;align-items:center;gap:5px;cursor:pointer">
+          <input type="checkbox" id="selectAll" onchange="toggleSelectAll(this.checked)"> Select all visible
+        </label>
+        <button class="btn btn-sm" id="bulkDelBtn" style="display:none;background:var(--red);color:#fff;border-color:var(--red)" onclick="bulkDelete()">&#128465; Delete selected (<span id="selCount">0</span>)</button>
+      </div>
+      <div id="allList"></div>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<!-- LOADING OVERLAY -->
+<div id="loadingOverlay" style="display:none;position:fixed;inset:0;background:rgba(26,47,90,.55);
+     z-index:1000;align-items:center;justify-content:center;flex-direction:column;gap:14px">
+  <div style="width:44px;height:44px;border:5px solid rgba(255,255,255,.3);
+              border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite"></div>
+  <div style="color:#fff;font-weight:600;font-size:.95rem">Loading bookings…</div>
+</div>
+<style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+
+<!-- SUCCESS MODAL -->
+<div class="mbg" id="mSuccess">
+  <div class="mbox">
+    <div style="font-size:3.2rem;margin-bottom:9px">&#9989;</div>
+    <h3 style="color:var(--green)">Request Submitted!</h3>
+    <p>Your booking has been sent for review. The SRMB scheduler will be in touch if there is a conflict.</p>
+    <div class="mdetail" id="mDetail"></div>
+    <button class="btn btn-p" onclick="closeModal()">Done</button>
+  </div>
+</div>
+
+<!-- EDIT BOOKING MODAL -->
+<div class="mbg" id="editModal">
+  <div class="mbox" style="text-align:left;max-width:580px;width:100%">
+    <h3 style="margin-bottom:16px;color:var(--navy)">&#9999;&#65039; Edit Booking</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div style="grid-column:1/-1">
+        <label style="font-size:.78rem;font-weight:600;color:var(--navy);display:block;margin-bottom:4px">Diamond / Field</label>
+        <select id="eDiamond" style="width:100%;border:1.5px solid var(--mid);border-radius:8px;padding:8px 11px;font-family:inherit;font-size:.88rem"></select>
+      </div>
+      <div>
+        <label style="font-size:.78rem;font-weight:600;color:var(--navy);display:block;margin-bottom:4px">Date</label>
+        <input type="date" id="eDate" style="width:100%;border:1.5px solid var(--mid);border-radius:8px;padding:8px 11px;font-family:inherit;font-size:.88rem">
+      </div>
+      <div>
+        <label style="font-size:.78rem;font-weight:600;color:var(--navy);display:block;margin-bottom:4px">Event Type</label>
+        <select id="eBkType" style="width:100%;border:1.5px solid var(--mid);border-radius:8px;padding:8px 11px;font-family:inherit;font-size:.88rem">
+          <option value="Practice">Practice</option>
+          <option value="Game">Game</option>
+          <option value="Tournament">Tournament</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:.78rem;font-weight:600;color:var(--navy);display:block;margin-bottom:4px">Start Time</label>
+        <select id="eStart" style="width:100%;border:1.5px solid var(--mid);border-radius:8px;padding:8px 11px;font-family:inherit;font-size:.88rem"></select>
+      </div>
+      <div>
+        <label style="font-size:.78rem;font-weight:600;color:var(--navy);display:block;margin-bottom:4px">End Time</label>
+        <select id="eEnd" style="width:100%;border:1.5px solid var(--mid);border-radius:8px;padding:8px 11px;font-family:inherit;font-size:.88rem"></select>
+      </div>
+      <div>
+        <label style="font-size:.78rem;font-weight:600;color:var(--navy);display:block;margin-bottom:4px">Team Name</label>
+        <input type="text" id="eTeam" style="width:100%;border:1.5px solid var(--mid);border-radius:8px;padding:8px 11px;font-family:inherit;font-size:.88rem">
+      </div>
+      <div>
+        <label style="font-size:.78rem;font-weight:600;color:var(--navy);display:block;margin-bottom:4px">Division</label>
+        <input type="text" id="eDiv" style="width:100%;border:1.5px solid var(--mid);border-radius:8px;padding:8px 11px;font-family:inherit;font-size:.88rem">
+      </div>
+      <div>
+        <label style="font-size:.78rem;font-weight:600;color:var(--navy);display:block;margin-bottom:4px">Contact Name</label>
+        <input type="text" id="eContact" style="width:100%;border:1.5px solid var(--mid);border-radius:8px;padding:8px 11px;font-family:inherit;font-size:.88rem">
+      </div>
+      <div>
+        <label style="font-size:.78rem;font-weight:600;color:var(--navy);display:block;margin-bottom:4px">Phone</label>
+        <input type="text" id="ePhone" style="width:100%;border:1.5px solid var(--mid);border-radius:8px;padding:8px 11px;font-family:inherit;font-size:.88rem">
+      </div>
+      <div style="grid-column:1/-1">
+        <label style="font-size:.78rem;font-weight:600;color:var(--navy);display:block;margin-bottom:4px">Email</label>
+        <input type="email" id="eEmail" style="width:100%;border:1.5px solid var(--mid);border-radius:8px;padding:8px 11px;font-family:inherit;font-size:.88rem">
+      </div>
+      <div style="grid-column:1/-1">
+        <label style="font-size:.78rem;font-weight:600;color:var(--navy);display:block;margin-bottom:4px">Notes</label>
+        <textarea id="eNotes" rows="2" style="width:100%;border:1.5px solid var(--mid);border-radius:8px;padding:8px 11px;font-family:inherit;font-size:.88rem;resize:vertical"></textarea>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:18px;flex-wrap:wrap">
+      <button class="btn" onclick="closeEditModal()" style="border:1.5px solid var(--mid);color:var(--dgray)">Cancel</button>
+      <button class="btn btn-p" onclick="saveEditModal()">&#128190; Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADMIN NOTES MODAL -->
+<div class="mbg" id="notesModal">
+  <div class="mbox" style="text-align:left">
+    <h3 style="margin-bottom:6px" id="notesModalTitle">Notes for Requestor</h3>
+    <p id="notesModalSub" style="margin-bottom:12px"></p>
+    <div class="mdetail" id="notesModalDetail"></div>
+    <label style="font-size:.85rem;font-weight:600;color:var(--navy);display:block;margin:14px 0 5px">
+      Additional message to include in the email <span style="font-weight:400;color:var(--dgray)">(optional — leave blank to skip)</span>
+    </label>
+    <textarea id="adminNotesInput" rows="4"
+      style="width:100%;border:1.5px solid var(--mid);border-radius:8px;padding:9px 11px;
+             font-family:inherit;font-size:.88rem;resize:vertical;outline:none"
+      placeholder="e.g. That time slot conflicts with a tournament — please try a weekday evening."></textarea>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
+      <button class="btn" onclick="cancelNotesModal()" style="border:1.5px solid var(--mid);color:var(--dgray)">Cancel</button>
+      <button class="btn" id="notesSkipBtn" onclick="executeStatusChange('')"
+        style="border:1.5px solid var(--mid);color:var(--dgray)">Send without notes</button>
+      <button class="btn btn-p" id="notesSendBtn" onclick="executeStatusChange(document.getElementById('adminNotesInput').value.trim())">Send</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── CONFIG ────────────────────────────────────
+const CFG = {
+  adminPassword: 'srmb2026',   // ← change this! (must match ADMIN_KEY in Apps Script)
+  scriptUrl: 'https://script.google.com/macros/s/AKfycbx-kLHblGjU2NltBA8csZECSgN5lHG2iuf6n4dQQFtStKTRrRX91AgMJ-x2uaQpna7OhQ/exec',               // ← paste your Google Apps Script web app URL here
+  timeSlots: [
+    '07:00','07:30','08:00','08:30','09:00','09:30',
+    '10:00','10:30','11:00','11:30','12:00','12:30',
+    '13:00','13:30','14:00','14:30','15:00','15:30',
+    '16:00','16:30','17:00','17:30','18:00','18:30',
+    '19:00','19:30','20:00','20:30','21:00','21:30','22:00'
+  ]
+};
+
+// ─── DIAMONDS / FIELDS ─────────────────────────
+const DIAMONDS = [
+  // ── Optimist Park – standard diamonds ─────────────────────────────────────
+  { id:'D1',    label:'Diamond #1',       section:'Optimist Park',  group:'other',   color:'#c0392b' },
+  // ── Diamond #2 complex ────────────────────────────────────────────────────
+  { id:'D2',    label:'Diamond #2 (Main)',      section:'Optimist Park',  group:'c2',      color:'#922b21', isMain:true },
+  { id:'D2S',   label:'Diamond #2 (CF)',         section:'Optimist Park',  group:'c2',      color:'#e74c3c', mainOf:'D2' },
+  { id:'D6',    label:'Diamond #6',       section:'Optimist Park',  group:'other',   color:'#c0392b' },
+  { id:'D7',    label:'Diamond #7',       section:'Optimist Park',  group:'other',   color:'#273746' },
+  // ── Diamond #3 complex ────────────────────────────────────────────────────
+  { id:'D3',    label:'Diamond #3',       section:'Optimist Park',  group:'c3',      color:'#7d3c98', isMain:true },
+  { id:'D3LF',  label:'Diamond #3 LF',    section:'Optimist Park',  group:'c3',      color:'#9b59b6', mainOf:'D3' },
+  { id:'D3RF',  label:'Diamond #3 RF',    section:'Optimist Park',  group:'c3',      color:'#9b59b6', mainOf:'D3' },
+  // ── Diamond #4 complex ────────────────────────────────────────────────────
+  { id:'D4',    label:'Diamond #4',       section:'Optimist Park',  group:'c4',      color:'#1f618d', isMain:true },
+  { id:'D4LF',  label:'Diamond #4 LF',    section:'Optimist Park',  group:'c4',      color:'#2980b9', mainOf:'D4' },
+  { id:'D4RF',  label:'Diamond #4 RF',    section:'Optimist Park',  group:'c4',      color:'#2980b9', mainOf:'D4' },
+  // ── Diamond #5 complex ────────────────────────────────────────────────────
+  { id:'D5',    label:'Diamond #5',       section:'Optimist Park',  group:'c5',      color:'#1a7a3c', isMain:true },
+  { id:'D5LF',  label:'Diamond #5 LF',    section:'Optimist Park',  group:'c5',      color:'#27ae60', mainOf:'D5' },
+  { id:'D5RF',  label:'Diamond #5 RF',    section:'Optimist Park',  group:'c5',      color:'#27ae60', mainOf:'D5' },
+  // ── Other bookable areas at Optimist Park ─────────────────────────────────
+  { id:'LTP3',  label:'LTP3 (enclosed fence area closest to washrooms)', section:'Other Areas', group:'ltp',     color:'#16a085' },
+  { id:'LTP4',  label:'LTP4 (enclosed area furthest from washrooms)',  section:'Other Areas', group:'ltp',     color:'#16a085' },
+  { id:'PARK1', label:'LTP1 (right beside D1)',                        section:'Other Areas', group:'parking', color:'#7f8c8d' },
+  { id:'PARK2', label:'LTP2 (right beside parking lot)',               section:'Other Areas', group:'parking', color:'#7f8c8d' },
+  // ── Grand Pointe — not available ─────────────────────────────────────────
+  { id:'GP1',   label:'Grand Pointe #1',  section:'Grand Pointe',   group:'gp',      color:'#aab7b8', unavailable:true },
+  { id:'GP2',   label:'Grand Pointe #2',  section:'Grand Pointe',   group:'gp',      color:'#aab7b8', unavailable:true },
+  { id:'GP3',   label:'Grand Pointe #3',  section:'Grand Pointe',   group:'gp',      color:'#aab7b8', unavailable:true },
+  // ── Lorette — not available ───────────────────────────────────────────────
+  { id:'LOR1',  label:'Lorette #1',       section:'Lorette',        group:'lorette', color:'#aab7b8', unavailable:true },
+  { id:'LOR2',  label:'Lorette #2',       section:'Lorette',        group:'lorette', color:'#aab7b8', unavailable:true },
+  // ── St. Adolphe — not available ───────────────────────────────────────────
+  { id:'SA1',   label:'St. Adolphe',      section:'St. Adolphe',    group:'sa',      color:'#aab7b8', unavailable:true },
+];
+
+// ─── STORAGE ────────────────────────────────────
+// When scriptUrl is set, all reads/writes go to Google Sheets via Apps Script.
+// When scriptUrl is empty, falls back to localStorage (useful for local testing).
+const LOCAL_KEY = 'srmb_v3';
+let   CACHE     = [];  // in-memory cache — all UI reads from this synchronously
+
+const loadBK  = () => CACHE;
+const newId   = () => 'BK'+Date.now().toString(36).toUpperCase()+Math.random().toString(36).substr(2,4).toUpperCase();
+
+// ─── LEGACY BOOKINGS (imported from previous Heroku scheduler) ───────────────
+// These are always shown — they cannot be deleted via the admin panel unless
+// they are also removed from this array.
+const LEGACY_BOOKINGS = [
+  // ── April 2026 – SRMB 11U Practice (D4) ──────────────────────────────────
+  {id:'LGC001',diamond:'D4',dLabel:'Diamond #4',date:'2026-04-21',start:'17:00',end:'18:30',bkType:'Practice',teamName:'SRMB 11U Practice',division:'11U Baseball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC002',diamond:'D4',dLabel:'Diamond #4',date:'2026-04-22',start:'17:00',end:'18:30',bkType:'Practice',teamName:'SRMB 11U Practice',division:'11U Baseball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC003',diamond:'D1',dLabel:'Diamond #1',date:'2026-04-23',start:'18:00',end:'20:00',bkType:'Practice',teamName:'SRU15 Softball',division:'U15 Softball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC004',diamond:'D1',dLabel:'Diamond #1',date:'2026-04-26',start:'15:00',end:'17:00',bkType:'Practice',teamName:'SRU15 Softball',division:'U15 Softball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC005',diamond:'D4',dLabel:'Diamond #4',date:'2026-04-27',start:'17:00',end:'18:30',bkType:'Practice',teamName:'SRMB 11U Practice',division:'11U Baseball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC006',diamond:'D4',dLabel:'Diamond #4',date:'2026-04-30',start:'17:00',end:'18:30',bkType:'Practice',teamName:'SRMB 11U Practice',division:'11U Baseball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC007',diamond:'D1',dLabel:'Diamond #1',date:'2026-04-30',start:'18:00',end:'20:00',bkType:'Practice',teamName:'SRU15 Softball',division:'U15 Softball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  // ── May 2026 ─────────────────────────────────────────────────────────────
+  {id:'LGC008',diamond:'D1',dLabel:'Diamond #1',date:'2026-05-03',start:'15:00',end:'17:00',bkType:'Practice',teamName:'SRU15 Softball',division:'U15 Softball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  // ── June 10 – SRSD Softball Tournament ───────────────────────────────────
+  {id:'LGC009',diamond:'D1',dLabel:'Diamond #1',date:'2026-06-10',start:'08:30',end:'16:30',bkType:'Tournament',teamName:'SRSD Softball Tournament',division:'',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC010',diamond:'D2',dLabel:'Diamond #2 (Main)',date:'2026-06-10',start:'08:30',end:'16:30',bkType:'Tournament',teamName:'SRSD Softball Tournament',division:'',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC011',diamond:'D3',dLabel:'Diamond #3',date:'2026-06-10',start:'08:30',end:'16:30',bkType:'Tournament',teamName:'SRSD Softball Tournament',division:'',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC012',diamond:'D4',dLabel:'Diamond #4',date:'2026-06-10',start:'08:30',end:'16:30',bkType:'Tournament',teamName:'SRSD Softball Tournament',division:'',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  // ── June 11 – SRSD Rain-Out Date ──────────────────────────────────────────
+  {id:'LGC013',diamond:'D1',dLabel:'Diamond #1',date:'2026-06-11',start:'09:00',end:'17:00',bkType:'Tournament',teamName:'SRSD 7/8 Tournament (Rain-Out Date)',division:'',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC014',diamond:'D2',dLabel:'Diamond #2 (Main)',date:'2026-06-11',start:'09:00',end:'17:00',bkType:'Tournament',teamName:'SRSD 7/8 Tournament (Rain-Out Date)',division:'',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC015',diamond:'D3',dLabel:'Diamond #3',date:'2026-06-11',start:'09:00',end:'17:00',bkType:'Tournament',teamName:'SRSD 7/8 Tournament (Rain-Out Date)',division:'',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC016',diamond:'D4',dLabel:'Diamond #4',date:'2026-06-11',start:'09:00',end:'17:00',bkType:'Tournament',teamName:'SRSD 7/8 Tournament (Rain-Out Date)',division:'',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  // ── June 12–14 – CRSL 15U AA Tournament ──────────────────────────────────
+  {id:'LGC017',diamond:'D1',dLabel:'Diamond #1',date:'2026-06-12',start:'08:00',end:'21:00',bkType:'Tournament',teamName:'CRSL 15U AA Tournament',division:'15U Baseball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC018',diamond:'D2',dLabel:'Diamond #2 (Main)',date:'2026-06-12',start:'08:00',end:'21:00',bkType:'Tournament',teamName:'CRSL 15U AA Tournament',division:'15U Baseball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC019',diamond:'D3',dLabel:'Diamond #3',date:'2026-06-12',start:'08:00',end:'21:00',bkType:'Tournament',teamName:'CRSL 15U AA Tournament',division:'15U Baseball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC020',diamond:'D4',dLabel:'Diamond #4',date:'2026-06-12',start:'08:00',end:'21:00',bkType:'Tournament',teamName:'CRSL 15U AA Tournament',division:'15U Baseball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC021',diamond:'D7',dLabel:'Diamond #7',date:'2026-06-12',start:'08:00',end:'21:00',bkType:'Tournament',teamName:'CRSL 15U AA Tournament',division:'15U Baseball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC022',diamond:'D1',dLabel:'Diamond #1',date:'2026-06-13',start:'08:00',end:'21:00',bkType:'Tournament',teamName:'CRSL 15U AA Tournament',division:'15U Baseball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC023',diamond:'D2',dLabel:'Diamond #2 (Main)',date:'2026-06-13',start:'08:00',end:'21:00',bkType:'Tournament',teamName:'CRSL 15U AA Tournament',division:'15U Baseball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC024',diamond:'D3',dLabel:'Diamond #3',date:'2026-06-13',start:'08:00',end:'21:00',bkType:'Tournament',teamName:'CRSL 15U AA Tournament',division:'15U Baseball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC025',diamond:'D4',dLabel:'Diamond #4',date:'2026-06-13',start:'08:00',end:'21:00',bkType:'Tournament',teamName:'CRSL 15U AA Tournament',division:'15U Baseball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC026',diamond:'D7',dLabel:'Diamond #7',date:'2026-06-13',start:'08:00',end:'21:00',bkType:'Tournament',teamName:'CRSL 15U AA Tournament',division:'15U Baseball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC027',diamond:'D1',dLabel:'Diamond #1',date:'2026-06-14',start:'08:00',end:'21:00',bkType:'Tournament',teamName:'CRSL 15U AA Tournament',division:'15U Baseball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC028',diamond:'D2',dLabel:'Diamond #2 (Main)',date:'2026-06-14',start:'08:00',end:'21:00',bkType:'Tournament',teamName:'CRSL 15U AA Tournament',division:'15U Baseball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC029',diamond:'D3',dLabel:'Diamond #3',date:'2026-06-14',start:'08:00',end:'21:00',bkType:'Tournament',teamName:'CRSL 15U AA Tournament',division:'15U Baseball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC030',diamond:'D4',dLabel:'Diamond #4',date:'2026-06-14',start:'08:00',end:'21:00',bkType:'Tournament',teamName:'CRSL 15U AA Tournament',division:'15U Baseball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC031',diamond:'D7',dLabel:'Diamond #7',date:'2026-06-14',start:'08:00',end:'21:00',bkType:'Tournament',teamName:'CRSL 15U AA Tournament',division:'15U Baseball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  // ── June 19–21 – U11 CRSL Championships ──────────────────────────────────
+  {id:'LGC032',diamond:'D1',dLabel:'Diamond #1',date:'2026-06-19',start:'07:00',end:'21:00',bkType:'Tournament',teamName:'U11 CRSL Championships',division:'11U Baseball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC033',diamond:'D2',dLabel:'Diamond #2 (Main)',date:'2026-06-19',start:'07:00',end:'21:00',bkType:'Tournament',teamName:'U11 CRSL Championships',division:'11U Baseball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC034',diamond:'D3',dLabel:'Diamond #3',date:'2026-06-19',start:'07:00',end:'21:00',bkType:'Tournament',teamName:'U11 CRSL Championships',division:'11U Baseball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC035',diamond:'D4',dLabel:'Diamond #4',date:'2026-06-19',start:'07:00',end:'21:00',bkType:'Tournament',teamName:'U11 CRSL Championships',division:'11U Baseball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC036',diamond:'D1',dLabel:'Diamond #1',date:'2026-06-20',start:'07:00',end:'21:00',bkType:'Tournament',teamName:'U11 CRSL Championships',division:'11U Baseball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC037',diamond:'D2',dLabel:'Diamond #2 (Main)',date:'2026-06-20',start:'07:00',end:'21:00',bkType:'Tournament',teamName:'U11 CRSL Championships',division:'11U Baseball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC038',diamond:'D3',dLabel:'Diamond #3',date:'2026-06-20',start:'07:00',end:'21:00',bkType:'Tournament',teamName:'U11 CRSL Championships',division:'11U Baseball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC039',diamond:'D4',dLabel:'Diamond #4',date:'2026-06-20',start:'07:00',end:'21:00',bkType:'Tournament',teamName:'U11 CRSL Championships',division:'11U Baseball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC040',diamond:'D1',dLabel:'Diamond #1',date:'2026-06-21',start:'07:00',end:'21:00',bkType:'Tournament',teamName:'U11 CRSL Championships',division:'11U Baseball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC041',diamond:'D2',dLabel:'Diamond #2 (Main)',date:'2026-06-21',start:'07:00',end:'21:00',bkType:'Tournament',teamName:'U11 CRSL Championships',division:'11U Baseball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC042',diamond:'D3',dLabel:'Diamond #3',date:'2026-06-21',start:'07:00',end:'21:00',bkType:'Tournament',teamName:'U11 CRSL Championships',division:'11U Baseball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC043',diamond:'D4',dLabel:'Diamond #4',date:'2026-06-21',start:'07:00',end:'21:00',bkType:'Tournament',teamName:'U11 CRSL Championships',division:'11U Baseball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  // ── June 26–28 – U13 CRSL Championship ───────────────────────────────────
+  {id:'LGC044',diamond:'D1',dLabel:'Diamond #1',date:'2026-06-26',start:'07:00',end:'21:00',bkType:'Tournament',teamName:'U13 CRSL Championship',division:'13U Baseball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC045',diamond:'D2',dLabel:'Diamond #2 (Main)',date:'2026-06-26',start:'07:00',end:'21:00',bkType:'Tournament',teamName:'U13 CRSL Championship',division:'13U Baseball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC046',diamond:'D3',dLabel:'Diamond #3',date:'2026-06-26',start:'07:00',end:'21:00',bkType:'Tournament',teamName:'U13 CRSL Championship',division:'13U Baseball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC047',diamond:'D4',dLabel:'Diamond #4',date:'2026-06-26',start:'07:00',end:'21:00',bkType:'Tournament',teamName:'U13 CRSL Championship',division:'13U Baseball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC048',diamond:'D1',dLabel:'Diamond #1',date:'2026-06-27',start:'07:00',end:'21:00',bkType:'Tournament',teamName:'U13 CRSL Championship',division:'13U Baseball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC049',diamond:'D2',dLabel:'Diamond #2 (Main)',date:'2026-06-27',start:'07:00',end:'21:00',bkType:'Tournament',teamName:'U13 CRSL Championship',division:'13U Baseball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC050',diamond:'D3',dLabel:'Diamond #3',date:'2026-06-27',start:'07:00',end:'21:00',bkType:'Tournament',teamName:'U13 CRSL Championship',division:'13U Baseball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC051',diamond:'D4',dLabel:'Diamond #4',date:'2026-06-27',start:'07:00',end:'21:00',bkType:'Tournament',teamName:'U13 CRSL Championship',division:'13U Baseball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC052',diamond:'D1',dLabel:'Diamond #1',date:'2026-06-28',start:'07:00',end:'21:00',bkType:'Tournament',teamName:'U13 CRSL Championship',division:'13U Baseball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC053',diamond:'D2',dLabel:'Diamond #2 (Main)',date:'2026-06-28',start:'07:00',end:'21:00',bkType:'Tournament',teamName:'U13 CRSL Championship',division:'13U Baseball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC054',diamond:'D3',dLabel:'Diamond #3',date:'2026-06-28',start:'07:00',end:'21:00',bkType:'Tournament',teamName:'U13 CRSL Championship',division:'13U Baseball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC055',diamond:'D4',dLabel:'Diamond #4',date:'2026-06-28',start:'07:00',end:'21:00',bkType:'Tournament',teamName:'U13 CRSL Championship',division:'13U Baseball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  // ── July 3–5 – U17 & U19 CRSL Championships ──────────────────────────────
+  {id:'LGC056',diamond:'D1',dLabel:'Diamond #1',date:'2026-07-03',start:'07:00',end:'21:00',bkType:'Tournament',teamName:'U17 & U19 CRSL Championships',division:'',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC057',diamond:'D2',dLabel:'Diamond #2 (Main)',date:'2026-07-03',start:'07:00',end:'21:00',bkType:'Tournament',teamName:'U17 & U19 CRSL Championships',division:'',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC058',diamond:'D3',dLabel:'Diamond #3',date:'2026-07-03',start:'07:00',end:'21:00',bkType:'Tournament',teamName:'U17 & U19 CRSL Championships',division:'',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC059',diamond:'D4',dLabel:'Diamond #4',date:'2026-07-03',start:'07:00',end:'21:00',bkType:'Tournament',teamName:'U17 & U19 CRSL Championships',division:'',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC060',diamond:'D1',dLabel:'Diamond #1',date:'2026-07-04',start:'07:00',end:'21:00',bkType:'Tournament',teamName:'U17 & U19 CRSL Championships',division:'',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC061',diamond:'D2',dLabel:'Diamond #2 (Main)',date:'2026-07-04',start:'07:00',end:'21:00',bkType:'Tournament',teamName:'U17 & U19 CRSL Championships',division:'',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC062',diamond:'D3',dLabel:'Diamond #3',date:'2026-07-04',start:'07:00',end:'21:00',bkType:'Tournament',teamName:'U17 & U19 CRSL Championships',division:'',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC063',diamond:'D4',dLabel:'Diamond #4',date:'2026-07-04',start:'07:00',end:'21:00',bkType:'Tournament',teamName:'U17 & U19 CRSL Championships',division:'',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC064',diamond:'D1',dLabel:'Diamond #1',date:'2026-07-05',start:'07:00',end:'21:00',bkType:'Tournament',teamName:'U17 & U19 CRSL Championships',division:'',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC065',diamond:'D2',dLabel:'Diamond #2 (Main)',date:'2026-07-05',start:'07:00',end:'21:00',bkType:'Tournament',teamName:'U17 & U19 CRSL Championships',division:'',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC066',diamond:'D3',dLabel:'Diamond #3',date:'2026-07-05',start:'07:00',end:'21:00',bkType:'Tournament',teamName:'U17 & U19 CRSL Championships',division:'',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC067',diamond:'D4',dLabel:'Diamond #4',date:'2026-07-05',start:'07:00',end:'21:00',bkType:'Tournament',teamName:'U17 & U19 CRSL Championships',division:'',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  // ── August 6–9 – Ladies Fastball League ──────────────────────────────────
+  {id:'LGC068',diamond:'D1',dLabel:'Diamond #1',date:'2026-08-06',start:'16:00',end:'21:30',bkType:'Game',teamName:'Ladies Fastball League',division:'',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC069',diamond:'D2',dLabel:'Diamond #2 (Main)',date:'2026-08-06',start:'16:00',end:'21:30',bkType:'Game',teamName:'Ladies Fastball League',division:'',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC070',diamond:'D3',dLabel:'Diamond #3',date:'2026-08-06',start:'16:00',end:'21:30',bkType:'Game',teamName:'Ladies Fastball League',division:'',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC071',diamond:'D4',dLabel:'Diamond #4',date:'2026-08-06',start:'16:00',end:'21:30',bkType:'Game',teamName:'Ladies Fastball League',division:'',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC072',diamond:'D1',dLabel:'Diamond #1',date:'2026-08-07',start:'16:00',end:'21:30',bkType:'Game',teamName:'Ladies Fastball League',division:'',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC073',diamond:'D2',dLabel:'Diamond #2 (Main)',date:'2026-08-07',start:'16:00',end:'21:30',bkType:'Game',teamName:'Ladies Fastball League',division:'',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC074',diamond:'D3',dLabel:'Diamond #3',date:'2026-08-07',start:'16:00',end:'21:30',bkType:'Game',teamName:'Ladies Fastball League',division:'',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC075',diamond:'D4',dLabel:'Diamond #4',date:'2026-08-07',start:'16:00',end:'21:30',bkType:'Game',teamName:'Ladies Fastball League',division:'',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC076',diamond:'D1',dLabel:'Diamond #1',date:'2026-08-08',start:'16:00',end:'21:30',bkType:'Game',teamName:'Ladies Fastball League',division:'',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC077',diamond:'D2',dLabel:'Diamond #2 (Main)',date:'2026-08-08',start:'16:00',end:'21:30',bkType:'Game',teamName:'Ladies Fastball League',division:'',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC078',diamond:'D3',dLabel:'Diamond #3',date:'2026-08-08',start:'16:00',end:'21:30',bkType:'Game',teamName:'Ladies Fastball League',division:'',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC079',diamond:'D4',dLabel:'Diamond #4',date:'2026-08-08',start:'16:00',end:'21:30',bkType:'Game',teamName:'Ladies Fastball League',division:'',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC080',diamond:'D1',dLabel:'Diamond #1',date:'2026-08-09',start:'16:00',end:'21:30',bkType:'Game',teamName:'Ladies Fastball League',division:'',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC081',diamond:'D2',dLabel:'Diamond #2 (Main)',date:'2026-08-09',start:'16:00',end:'21:30',bkType:'Game',teamName:'Ladies Fastball League',division:'',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC082',diamond:'D3',dLabel:'Diamond #3',date:'2026-08-09',start:'16:00',end:'21:30',bkType:'Game',teamName:'Ladies Fastball League',division:'',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC083',diamond:'D4',dLabel:'Diamond #4',date:'2026-08-09',start:'16:00',end:'21:30',bkType:'Game',teamName:'Ladies Fastball League',division:'',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  // ── August 13–16 – 13U AAA Western Canadians ─────────────────────────────
+  {id:'LGC084',diamond:'D1',dLabel:'Diamond #1',date:'2026-08-13',start:'08:00',end:'21:30',bkType:'Tournament',teamName:'13U AAA Western Canadians',division:'13U Baseball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC085',diamond:'D2',dLabel:'Diamond #2 (Main)',date:'2026-08-13',start:'08:00',end:'21:30',bkType:'Tournament',teamName:'13U AAA Western Canadians',division:'13U Baseball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC086',diamond:'D3',dLabel:'Diamond #3',date:'2026-08-13',start:'08:00',end:'21:30',bkType:'Tournament',teamName:'13U AAA Western Canadians',division:'13U Baseball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC087',diamond:'D4',dLabel:'Diamond #4',date:'2026-08-13',start:'08:00',end:'21:30',bkType:'Tournament',teamName:'13U AAA Western Canadians',division:'13U Baseball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC088',diamond:'D5',dLabel:'Diamond #5',date:'2026-08-13',start:'08:00',end:'21:30',bkType:'Tournament',teamName:'13U AAA Western Canadians',division:'13U Baseball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC089',diamond:'D6',dLabel:'Diamond #6',date:'2026-08-13',start:'08:00',end:'21:30',bkType:'Tournament',teamName:'13U AAA Western Canadians',division:'13U Baseball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC090',diamond:'D1',dLabel:'Diamond #1',date:'2026-08-14',start:'08:00',end:'21:30',bkType:'Tournament',teamName:'13U AAA Western Canadians',division:'13U Baseball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC091',diamond:'D2',dLabel:'Diamond #2 (Main)',date:'2026-08-14',start:'08:00',end:'21:30',bkType:'Tournament',teamName:'13U AAA Western Canadians',division:'13U Baseball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC092',diamond:'D3',dLabel:'Diamond #3',date:'2026-08-14',start:'08:00',end:'21:30',bkType:'Tournament',teamName:'13U AAA Western Canadians',division:'13U Baseball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC093',diamond:'D4',dLabel:'Diamond #4',date:'2026-08-14',start:'08:00',end:'21:30',bkType:'Tournament',teamName:'13U AAA Western Canadians',division:'13U Baseball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC094',diamond:'D5',dLabel:'Diamond #5',date:'2026-08-14',start:'08:00',end:'21:30',bkType:'Tournament',teamName:'13U AAA Western Canadians',division:'13U Baseball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC095',diamond:'D6',dLabel:'Diamond #6',date:'2026-08-14',start:'08:00',end:'21:30',bkType:'Tournament',teamName:'13U AAA Western Canadians',division:'13U Baseball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC096',diamond:'D1',dLabel:'Diamond #1',date:'2026-08-15',start:'08:00',end:'21:30',bkType:'Tournament',teamName:'13U AAA Western Canadians',division:'13U Baseball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC097',diamond:'D2',dLabel:'Diamond #2 (Main)',date:'2026-08-15',start:'08:00',end:'21:30',bkType:'Tournament',teamName:'13U AAA Western Canadians',division:'13U Baseball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC098',diamond:'D3',dLabel:'Diamond #3',date:'2026-08-15',start:'08:00',end:'21:30',bkType:'Tournament',teamName:'13U AAA Western Canadians',division:'13U Baseball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC099',diamond:'D4',dLabel:'Diamond #4',date:'2026-08-15',start:'08:00',end:'21:30',bkType:'Tournament',teamName:'13U AAA Western Canadians',division:'13U Baseball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC100',diamond:'D5',dLabel:'Diamond #5',date:'2026-08-15',start:'08:00',end:'21:30',bkType:'Tournament',teamName:'13U AAA Western Canadians',division:'13U Baseball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC101',diamond:'D6',dLabel:'Diamond #6',date:'2026-08-15',start:'08:00',end:'21:30',bkType:'Tournament',teamName:'13U AAA Western Canadians',division:'13U Baseball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC102',diamond:'D1',dLabel:'Diamond #1',date:'2026-08-16',start:'08:00',end:'21:30',bkType:'Tournament',teamName:'13U AAA Western Canadians',division:'13U Baseball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC103',diamond:'D2',dLabel:'Diamond #2 (Main)',date:'2026-08-16',start:'08:00',end:'21:30',bkType:'Tournament',teamName:'13U AAA Western Canadians',division:'13U Baseball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC104',diamond:'D3',dLabel:'Diamond #3',date:'2026-08-16',start:'08:00',end:'21:30',bkType:'Tournament',teamName:'13U AAA Western Canadians',division:'13U Baseball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC105',diamond:'D4',dLabel:'Diamond #4',date:'2026-08-16',start:'08:00',end:'21:30',bkType:'Tournament',teamName:'13U AAA Western Canadians',division:'13U Baseball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC106',diamond:'D5',dLabel:'Diamond #5',date:'2026-08-16',start:'08:00',end:'21:30',bkType:'Tournament',teamName:'13U AAA Western Canadians',division:'13U Baseball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC107',diamond:'D6',dLabel:'Diamond #6',date:'2026-08-16',start:'08:00',end:'21:30',bkType:'Tournament',teamName:'13U AAA Western Canadians',division:'13U Baseball',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  // ── August 21–23 – FGSP Playoffs ─────────────────────────────────────────
+  {id:'LGC108',diamond:'D1',dLabel:'Diamond #1',date:'2026-08-21',start:'09:00',end:'22:00',bkType:'Tournament',teamName:'FGSP Playoffs',division:'',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC109',diamond:'D2',dLabel:'Diamond #2 (Main)',date:'2026-08-21',start:'09:00',end:'22:00',bkType:'Tournament',teamName:'FGSP Playoffs',division:'',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC110',diamond:'D3',dLabel:'Diamond #3',date:'2026-08-21',start:'09:00',end:'22:00',bkType:'Tournament',teamName:'FGSP Playoffs',division:'',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC111',diamond:'D4',dLabel:'Diamond #4',date:'2026-08-21',start:'09:00',end:'22:00',bkType:'Tournament',teamName:'FGSP Playoffs',division:'',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC112',diamond:'D5',dLabel:'Diamond #5',date:'2026-08-21',start:'09:00',end:'22:00',bkType:'Tournament',teamName:'FGSP Playoffs',division:'',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC113',diamond:'D6',dLabel:'Diamond #6',date:'2026-08-21',start:'09:00',end:'22:00',bkType:'Tournament',teamName:'FGSP Playoffs',division:'',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC114',diamond:'D1',dLabel:'Diamond #1',date:'2026-08-22',start:'09:00',end:'22:00',bkType:'Tournament',teamName:'FGSP Playoffs',division:'',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC115',diamond:'D2',dLabel:'Diamond #2 (Main)',date:'2026-08-22',start:'09:00',end:'22:00',bkType:'Tournament',teamName:'FGSP Playoffs',division:'',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC116',diamond:'D3',dLabel:'Diamond #3',date:'2026-08-22',start:'09:00',end:'22:00',bkType:'Tournament',teamName:'FGSP Playoffs',division:'',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC117',diamond:'D4',dLabel:'Diamond #4',date:'2026-08-22',start:'09:00',end:'22:00',bkType:'Tournament',teamName:'FGSP Playoffs',division:'',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC118',diamond:'D5',dLabel:'Diamond #5',date:'2026-08-22',start:'09:00',end:'22:00',bkType:'Tournament',teamName:'FGSP Playoffs',division:'',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC119',diamond:'D6',dLabel:'Diamond #6',date:'2026-08-22',start:'09:00',end:'22:00',bkType:'Tournament',teamName:'FGSP Playoffs',division:'',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC120',diamond:'D1',dLabel:'Diamond #1',date:'2026-08-23',start:'09:00',end:'22:00',bkType:'Tournament',teamName:'FGSP Playoffs',division:'',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC121',diamond:'D2',dLabel:'Diamond #2 (Main)',date:'2026-08-23',start:'09:00',end:'22:00',bkType:'Tournament',teamName:'FGSP Playoffs',division:'',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC122',diamond:'D3',dLabel:'Diamond #3',date:'2026-08-23',start:'09:00',end:'22:00',bkType:'Tournament',teamName:'FGSP Playoffs',division:'',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC123',diamond:'D4',dLabel:'Diamond #4',date:'2026-08-23',start:'09:00',end:'22:00',bkType:'Tournament',teamName:'FGSP Playoffs',division:'',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC124',diamond:'D5',dLabel:'Diamond #5',date:'2026-08-23',start:'09:00',end:'22:00',bkType:'Tournament',teamName:'FGSP Playoffs',division:'',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+  {id:'LGC125',diamond:'D6',dLabel:'Diamond #6',date:'2026-08-23',start:'09:00',end:'22:00',bkType:'Tournament',teamName:'FGSP Playoffs',division:'',contact:'SRMB',phone:'',email:'',notes:'Imported from previous scheduler',status:'approved',submittedAt:'2026-01-01T00:00:00.000Z'},
+];
+
+// Fetch all bookings and refresh the cache
+async function refreshCache() {
+  if (CFG.scriptUrl) {
+    try {
+      const r = await fetch(CFG.scriptUrl + '?action=getBookings&t=' + Date.now());
+      const d = await r.json();
+      const serverBks = (d.bookings || []).map(bk => {
+        // Normalize all values to strings, with special handling for date/time fields
+        // that Google Sheets may have mangled (timezone shifts, full Date strings, etc.)
+        const out = {};
+        Object.keys(bk).forEach(k => {
+          let v = bk[k] != null ? String(bk[k]) : '';
+          if (k === 'date' && v) {
+            // If it's already YYYY-MM-DD, keep it; otherwise parse and reformat
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) {
+              const parsed = new Date(v);
+              if (!isNaN(parsed)) {
+                // Use local date parts to avoid UTC offset shifting the day
+                v = `${parsed.getFullYear()}-${p2(parsed.getMonth()+1)}-${p2(parsed.getDate())}`;
+              }
+            }
+          } else if ((k === 'start' || k === 'end') && v) {
+            // If it's already HH:MM, keep it; otherwise extract time portion
+            if (!/^\d{2}:\d{2}$/.test(v)) {
+              const parsed = new Date(v);
+              if (!isNaN(parsed)) {
+                v = `${p2(parsed.getHours())}:${p2(parsed.getMinutes())}`;
+              }
+            }
+          }
+          out[k] = v;
+        });
+        return out;
+      });
+      // Merge order: legacy → local-only (not yet in server) → server
+      // This ensures locally-saved bookings appear even if the API post was delayed/failed
+      const serverIds = new Set(serverBks.map(b => b.id));
+      const localBks  = localLoad();
+      const localOnly = localBks.filter(b => !serverIds.has(b.id) && !b.id.startsWith('LGC'));
+      CACHE = [...LEGACY_BOOKINGS.filter(b => !serverIds.has(b.id)), ...localOnly, ...serverBks];
+      // FieldClosure entries are always admin-approved — enforce this regardless of what the sheet says
+      CACHE = CACHE.map(b => b.bkType === 'FieldClosure' ? {...b, status:'approved'} : b);
+    } catch(e) {
+      console.warn('Could not reach Apps Script, falling back to localStorage:', e);
+      const localBks = localLoad();
+      const localIds = new Set(localBks.map(b => b.id));
+      CACHE = [...LEGACY_BOOKINGS.filter(b => !localIds.has(b.id)), ...localBks];
+    }
+  } else {
+    const localBks = localLoad();
+    const localIds = new Set(localBks.map(b => b.id));
+    CACHE = [...LEGACY_BOOKINGS.filter(b => !localIds.has(b.id)), ...localBks];
+  }
+}
+
+// Post an action to Apps Script (or fall back to localStorage)
+async function apiPost(payload) {
+  if (!CFG.scriptUrl) return null;
+  try {
+    const r = await fetch(CFG.scriptUrl, { method: 'POST', body: JSON.stringify(payload) });
+    return r.json();
+  } catch(e) {
+    console.warn('apiPost failed:', e);
+    return null;
+  }
+}
+
+// localStorage helpers (fallback / local testing)
+const localLoad = () => { try{return JSON.parse(localStorage.getItem(LOCAL_KEY)||'[]')}catch(e){return[]} };
+const localSave = a  => localStorage.setItem(LOCAL_KEY, JSON.stringify(a));
+
+// ─── STATE ──────────────────────────────────────
+const S = {
+  yr:new Date().getFullYear(), mo:new Date().getMonth(),
+  rYr:new Date().getFullYear(), rMo:new Date().getMonth(),
+  selDate:null, reqDate:null, reqDiamond:null, start:null, end:null,
+  wkOff:0, schedFilt:'all', adminIn:false,
+};
+
+// ─── NAV ────────────────────────────────────────
+function showView(btn,v){
+  document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));
+  document.getElementById('view-'+v).classList.add('active');
+  btn.classList.add('active');
+  if(v==='schedule') renderSched();
+  if(v==='admin'&&S.adminIn) renderAdmin();
+}
+
+// ─── HELPERS ────────────────────────────────────
+const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
+const DAYSS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const DAYSL=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const p2 = n => String(n).padStart(2,'0');
+const fd = d => `${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())}`;
+function fmtLong(ds){
+  if(!ds) return '';
+  const d=new Date(ds+'T00:00:00');
+  return `${DAYSL[d.getDay()]}, ${MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+}
+function fmt12(t){
+  if(!t) return '';
+  const[h,m]=t.split(':').map(Number);
+  return `${h%12||12}:${p2(m)} ${h>=12?'PM':'AM'}`;
+}
+// Compact time: "5p", "5:30p", "8:30a" — for calendar chips
+function fmtShort(t){
+  if(!t) return '';
+  const[h,m]=t.split(':').map(Number);
+  const suf=h>=12?'p':'a', h12=h%12||12;
+  return m ? `${h12}:${p2(m)}${suf}` : `${h12}${suf}`;
+}
+// Extract last name from a contact string ("John Smith" → "Smith")
+function lastName(s){
+  if(!s||!s.trim()) return '';
+  const parts=s.trim().split(/\s+/);
+  return parts[parts.length-1];
+}
+// Strip "Baseball" / "Softball" suffix from division ("11U Baseball" → "11U")
+function divAbbr(s){
+  return (s||'').replace(/\s*(Baseball|Softball)\s*/i,'').trim();
+}
+// Short calendar chip label — keeps chip text tight on small screens
+function fieldShort(diamond, dLabel){
+  const dia=DIAMONDS.find(d=>d.id===diamond);
+  if(dia){
+    const id=dia.id;
+    const m=id.match(/^D(\d+)(LF|RF|S)?$/);
+    if(m){
+      const n=m[1], suf=m[2];
+      if(suf==='LF') return `D${n}-LF`;
+      if(suf==='RF') return `D${n}-RF`;
+      if(suf==='S')  return `D${n}-CF`;
+      return `D${n}`;
+    }
+    if(id==='PARK1') return 'LTP1';
+    if(id==='PARK2') return 'LTP2';
+    // LTP3, LTP4: strip parenthetical description
+    if(/^LTP\d/.test(id)) return id;
+    return id;
+  }
+  // Fallback
+  return (dLabel||diamond).replace('Diamond #','D').replace(/ \(.*\)/,'').replace(' LF','-LF').replace(' RF','-RF');
+}
+
+// ─── MAIN CALENDAR ───────────────────────────────
+function renderCal(){
+  _doRenderCal('calGrid','calLabel');
+  if(S.adminIn && document.getElementById('aCalGrid')) _doRenderCal('aCalGrid','aCalLabel');
+}
+function _doRenderCal(gridId, labelId){
+  document.getElementById(labelId).textContent = MONTHS[S.mo]+' '+S.yr;
+  const today=new Date(), todayS=fd(today);
+  const first=new Date(S.yr,S.mo,1).getDay();
+  const last =new Date(S.yr,S.mo+1,0).getDate();
+  const bks  =loadBK();
+
+  // Group non-denied bookings by date
+  const byDate={};
+  bks.filter(b=>b.status!=='denied').forEach(b=>{
+    if(!byDate[b.date]) byDate[b.date]=[];
+    byDate[b.date].push(b);
+  });
+
+  let h = DAYSS.map(d=>`<div class="cal-dh">${d}</div>`).join('');
+  for(let i=0;i<first;i++) h+='<div class="cal-day empty"></div>';
+
+  for(let d=1;d<=last;d++){
+    const ds=`${S.yr}-${p2(S.mo+1)}-${p2(d)}`;
+    const dt=new Date(S.yr,S.mo,d);
+    const isPast=dt<new Date(today.getFullYear(),today.getMonth(),today.getDate());
+    // Closures always sort to top; regular bookings by start time
+    const dayBks=(byDate[ds]||[]).sort((a,b)=>{
+      const ac=a.bkType==='FieldClosure', bc=b.bkType==='FieldClosure';
+      if(ac&&!bc) return -1; if(!ac&&bc) return 1;
+      return a.start.localeCompare(b.start);
+    });
+    const closures=dayBks.filter(b=>b.bkType==='FieldClosure');
+    const regular=dayBks.filter(b=>b.bkType!=='FieldClosure');
+
+    let chips='';
+
+    // One compact chip per closure — field name only, reason in tooltip
+    closures.forEach(b=>{
+      const reason=b.notes||'Unplayable conditions';
+      const dNum=fieldShort(b.diamond,b.dLabel);
+      chips+=`<div class="cal-bk-item closure" title="⛔ ${b.dLabel} closed&#10;${reason}">`+
+             `<span class="cal-bk-t">⛔ ${dNum}</span>`+
+             `</div>`;
+    });
+
+    // Regular bookings (approved / pending)
+    regular.forEach(b=>{
+      const dia=DIAMONDS.find(x=>x.id===b.diamond);
+      const color=(dia&&dia.color)||'#888';
+      const dNum=fieldShort(b.diamond,b.dLabel);
+      const time=`${fmtShort(b.start)}–${fmtShort(b.end)}`;
+      const div=divAbbr(b.division);
+      const lname=lastName(b.contact);
+      const isPend=b.status==='pending';
+      chips+=`<div class="cal-bk-item${isPend?' pend':''}" style="${isPend?'':'border-left-color:'+color}" title="${b.teamName} — ${b.dLabel} — ${fmt12(b.start)}–${fmt12(b.end)}${isPend?' (pending approval)':''}">`+
+             `<span class="cal-bk-t">${isPend?'⏳ ':''}${dNum}</span>`+
+             `<span class="cal-bk-d"> ${[time,div,lname].filter(Boolean).join(' · ')}</span>`+
+             `</div>`;
+    });
+
+    let cls='cal-day';
+    if(isPast)         cls+=' past';
+    if(ds===todayS)    cls+=' today';
+    if(ds===S.selDate) cls+=' selected';
+    const click=isPast?'':` onclick="pickDay('${ds}')"`;
+
+    h+=`<div class="${cls}"${click}>
+      <div class="cal-dn">${d}</div>
+      ${chips}
+    </div>`;
+  }
+  document.getElementById(gridId).innerHTML=h;
+}
+
+function shiftMonth(d){ S.mo+=d; if(S.mo<0){S.mo=11;S.yr--} if(S.mo>11){S.mo=0;S.yr++} renderCal(); }
+function jumpToday(){ const n=new Date(); S.yr=n.getFullYear(); S.mo=n.getMonth(); renderCal(); }
+
+// ─── DAY DETAIL ─────────────────────────────────
+function pickDay(ds){
+  S.selDate=ds;
+  renderCal();
+  renderDayDetail(ds);
+  const dd=document.getElementById('dayDetail');
+  dd.style.display='block';
+  setTimeout(()=>dd.scrollIntoView({behavior:'smooth',block:'nearest'}),50);
+}
+
+function renderDayDetail(ds){
+  document.getElementById('ddTitle').textContent = fmtLong(ds);
+  const bks=loadBK().filter(b=>b.date===ds&&b.status!=='denied');
+
+  let rows='';
+  let lastSection='';
+  DIAMONDS.forEach(dia=>{
+    // Section header row when section changes
+    if(dia.section !== lastSection){
+      lastSection = dia.section;
+      rows+=`<tr><td colspan="4" class="d-section-lbl">${dia.section}</td></tr>`;
+    }
+
+    const isIndent=!!dia.mainOf;
+
+    // N/A fields — not available for booking
+    if(dia.unavailable){
+      rows+=`<tr class="field-row">
+        <td class="field-name${isIndent?' sub-indent':''}">
+          <span class="field-badge" style="background:${dia.color}"></span>${dia.label}
+        </td>
+        <td><span style="color:var(--dgray);font-size:.78rem">—</span></td>
+        <td style="white-space:nowrap"><span style="color:var(--dgray);font-size:.78rem;font-weight:600">N/A</span></td>
+        <td></td>
+      </tr>`;
+      return;
+    }
+
+    const diaBks=bks.filter(b=>b.diamond===dia.id);
+    const hasApproved=diaBks.some(b=>b.status==='approved');
+    const statusCell=hasApproved
+      ?`<span class="avail-no">Booked</span>`
+      :`<span class="avail-yes">Available</span>`;
+
+    let chips='<span style="color:var(--dgray);font-size:.78rem">None</span>';
+    if(diaBks.length){
+      chips=diaBks.map(b=>{
+        const isPend=b.status==='pending';
+        return `<span class="bk-chip" style="background:${dia.color};opacity:${isPend?.5:1}"
+          title="${b.contact} · ${b.phone}${isPend?' (pending approval)':' (approved)'}">
+          ${fmt12(b.start)}–${fmt12(b.end)} &nbsp;${b.teamName}${isPend?' &#8987;':''}
+        </span>`;
+      }).join('');
+    }
+
+    const fieldNote=dia.mainOf
+      ?`<span style="font-size:.7rem;color:var(--dgray);margin-left:4px">&#9978; ${dia.label.includes('LF')?'Left field':'Right field'} section</span>`
+      :'';
+
+    rows+=`<tr class="field-row">
+      <td class="field-name${isIndent?' sub-indent':''}">
+        <span class="field-badge" style="background:${dia.color}"></span>${dia.label}${fieldNote}
+      </td>
+      <td>${chips}</td>
+      <td style="white-space:nowrap">${statusCell}</td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-p btn-sm" onclick="bookFromDayField('${ds}','${dia.id}')">+ Book</button>
+      </td>
+    </tr>`;
+  });
+  document.getElementById('fieldRows').innerHTML=rows;
+}
+
+function closeDay(){
+  document.getElementById('dayDetail').style.display='none';
+  S.selDate=null; renderCal();
+}
+
+function bookFromDay(){
+  // Go to request view with date pre-filled
+  if(S.selDate){ S.reqDate=S.selDate; S.rYr=parseInt(S.selDate.split('-')[0]); S.rMo=parseInt(S.selDate.split('-')[1])-1; }
+  document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));
+  document.getElementById('view-request').classList.add('active');
+  document.querySelector('nav button[onclick*="request"]').classList.add('active');
+  renderReqCal();
+  if(S.reqDate) goStep(2);
+}
+
+function bookFromDayField(ds,dId){
+  S.reqDate=ds; S.reqDiamond=dId;
+  S.rYr=parseInt(ds.split('-')[0]); S.rMo=parseInt(ds.split('-')[1])-1;
+  document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));
+  document.getElementById('view-request').classList.add('active');
+  document.querySelector('nav button[onclick*="request"]').classList.add('active');
+  renderReqCal();
+  goStep(3);
+}
+
+// ─── REQUEST CALENDAR ────────────────────────────
+function renderReqCal(){
+  document.getElementById('reqCalLabel').textContent=MONTHS[S.rMo]+' '+S.rYr;
+  const today=new Date(), todayS=fd(today);
+  const first=new Date(S.rYr,S.rMo,1).getDay();
+  const last =new Date(S.rYr,S.rMo+1,0).getDate();
+  const dots =new Set(loadBK().filter(b=>b.status==='approved').map(b=>b.date));
+
+  let h=DAYSS.map(d=>`<div class="cal-dh">${d}</div>`).join('');
+  for(let i=0;i<first;i++) h+='<div class="cal-day empty"></div>';
+  for(let d=1;d<=last;d++){
+    const ds=`${S.rYr}-${p2(S.rMo+1)}-${p2(d)}`;
+    const dt=new Date(S.rYr,S.rMo,d);
+    const isPast=dt<new Date(today.getFullYear(),today.getMonth(),today.getDate());
+    let cls='cal-day';
+    if(isPast) cls+=' past';
+    if(ds===todayS) cls+=' today';
+    if(ds===S.reqDate) cls+=' selected';
+    const click=isPast?'':` onclick="pickReqDate('${ds}')"`;
+    h+=`<div class="${cls}"${click}>
+      <div class="cal-dn">${d}</div>
+      ${dots.has(ds)?'<div class="cal-count" style="color:var(--red)">&#9679;</div>':''}
+    </div>`;
+  }
+  document.getElementById('reqCalGrid').innerHTML=h;
+}
+
+function shiftReqMonth(d){ S.rMo+=d; if(S.rMo<0){S.rMo=11;S.rYr--} if(S.rMo>11){S.rMo=0;S.rYr++} renderReqCal(); }
+function pickReqDate(ds){ S.reqDate=ds; renderReqCal(); goStep(2); buildPicker(); }
+
+// ─── STEP MACHINE ────────────────────────────────
+function goStep(n){
+  if(n===3&&!S.reqDiamond){alert('Please select a field first.');return}
+  if(n===4){
+    const st=document.getElementById('selS').value, et=document.getElementById('selE').value;
+    if(!st||!et||st>=et){alert('Please choose a valid start and end time.');return}
+    S.start=st; S.end=et;
+  }
+  if(n===5){if(!validateForm()) return}
+  for(let i=1;i<=5;i++){
+    document.getElementById('sc-'+i).style.display=(i===n)?'block':'none';
+    const si=document.getElementById('si-'+i);
+    si.classList.remove('active','done');
+    if(i===n) si.classList.add('active');
+    else if(i<n) si.classList.add('done');
+  }
+  if(n===2) buildPicker();
+  if(n===3) buildTimePicker();
+  if(n===5) buildSummary();
+}
+
+// ─── DIAMOND PICKER (all together, no softball/hardball split) ──────
+function buildPicker(){
+  document.getElementById('s2date').textContent='📅 Booking date: '+fmtLong(S.reqDate);
+  const allBks=loadBK().filter(b=>b.date===S.reqDate&&b.status==='approved');
+  const busy=new Set(allBks.filter(b=>b.bkType!=='FieldClosure').map(b=>b.diamond));
+  const closed=new Set(allBks.filter(b=>b.bkType==='FieldClosure').map(b=>b.diamond));
+
+  const sections=[
+    {label:'Diamonds #1 · #6 · #7',                                   ids:['D1','D6','D7']},
+    {label:'Diamond #2 Complex — Main + Center Field',                 ids:['D2','D2S']},
+    {label:'Diamond #3 Complex — Main + &#9978; LF / RF Practice Fields', ids:['D3','D3LF','D3RF']},
+    {label:'Diamond #4 Complex — Main + &#9978; LF / RF Practice Fields', ids:['D4','D4LF','D4RF']},
+    {label:'Diamond #5 Complex — Main + &#9978; LF / RF Practice Fields', ids:['D5','D5LF','D5RF']},
+    {label:'Other Areas',                                              ids:['LTP3','LTP4','PARK1','PARK2']},
+  ];
+
+  let h='';
+  sections.forEach(sec=>{
+    h+=`<div class="d-section-lbl">${sec.label}</div>`;
+    sec.ids.forEach(id=>{
+      const dia=DIAMONDS.find(d=>d.id===id);
+      if(!dia||dia.unavailable) return;
+      const isBusy=busy.has(id), isClosed=closed.has(id), isSel=S.reqDiamond===id;
+      const note=dia.mainOf
+        ?(dia.label.includes('LF')?'&#9978; Left-field section · temporary fencing'
+          :dia.label.includes('RF')?'&#9978; Right-field section · temporary fencing'
+          :dia.id==='D2S'?'Center field area'
+          :'Secondary diamond')
+        :dia.isMain?'Main diamond'
+        :dia.group==='ltp'?'Learn to Play area'
+        :dia.group==='parking'?'Parking lot'
+        :'Standard diamond';
+      const av=isClosed
+        ?'<span class="d-avail n">⛔ Field Closed</span>'
+        :isBusy?'<span class="d-avail n">Booked</span>'
+        :'<span class="d-avail y">Available</span>';
+      h+=`<div class="d-opt${isSel?' sel':''}${isClosed?' d-closed':''}" onclick="${isClosed?'':'pickDiamond(\''+id+'\')'}">
+        <div class="d-opt-hdr"><span class="d-dot" style="background:${isClosed?'#c0392b':dia.color}"></span>
+          <span class="d-name">${dia.label}</span></div>
+        <div class="d-note">${isClosed?'⛔ Marked unplayable by admin':note}</div>${av}
+      </div>`;
+    });
+  });
+  document.getElementById('dPicker').innerHTML=h;
+  document.getElementById('btnD2').disabled=!S.reqDiamond;
+}
+
+function pickDiamond(id){ S.reqDiamond=id; buildPicker(); document.getElementById('btnD2').disabled=false; }
+
+// ─── TIME PICKER ─────────────────────────────────
+function buildTimePicker(){
+  const dia=DIAMONDS.find(d=>d.id===S.reqDiamond);
+  document.getElementById('s3info').innerHTML=`&#128205; <strong>${dia.label}</strong> on <strong>${fmtLong(S.reqDate)}</strong>`;
+
+  const bks=loadBK().filter(b=>b.date===S.reqDate&&b.diamond===S.reqDiamond&&b.status==='approved');
+  let cn='';
+  if(bks.length){
+    cn='<div class="cnote">&#9888;&#65039; This field already has approved bookings today:<br>';
+    bks.forEach(b=>{cn+=`&bull; ${b.teamName}: ${fmt12(b.start)}–${fmt12(b.end)}<br>`});
+    cn+='</div>';
+  }
+  if(dia.mainOf){
+    const mb=loadBK().filter(b=>b.date===S.reqDate&&b.diamond===dia.mainOf&&b.status==='approved');
+    if(mb.length) cn+=`<div class="cnote">&#9888;&#65039; ${DIAMONDS.find(d=>d.id===dia.mainOf).label} (the main diamond) is also booked today — confirm your times don't overlap.</div>`;
+  }
+  if(dia.isMain){
+    const subIds=DIAMONDS.filter(d=>d.mainOf===dia.id).map(d=>d.id);
+    const sb=loadBK().filter(b=>b.date===S.reqDate&&subIds.includes(b.diamond)&&b.status==='approved');
+    if(sb.length) cn+='<div class="cnote">&#9888;&#65039; One or more outfield sub-fields in this complex are already booked today — confirm times don\'t overlap.</div>';
+  }
+  document.getElementById('cNotes').innerHTML=cn;
+
+  const ss=document.getElementById('selS'), se=document.getElementById('selE');
+  ss.innerHTML='<option value="">— Start time —</option>';
+  se.innerHTML='<option value="">— End time —</option>';
+  CFG.timeSlots.forEach(t=>{ ss.innerHTML+=`<option value="${t}">${fmt12(t)}</option>`; se.innerHTML+=`<option value="${t}">${fmt12(t)}</option>`; });
+  if(S.start) ss.value=S.start;
+  if(S.end)   se.value=S.end;
+  chkTime();
+}
+function chkTime(){ const s=document.getElementById('selS').value,e=document.getElementById('selE').value; document.getElementById('btnD3').disabled=!s||!e||s>=e; }
+
+// ─── FORM VALIDATION ─────────────────────────────
+function validateForm(){
+  const ids=['fTeam','fDiv','fName','fPhone','fEmail']; let ok=true;
+  ids.forEach(id=>{ const el=document.getElementById(id); if(!el.value.trim()){el.classList.add('err');ok=false}else el.classList.remove('err'); });
+  if(!ok) alert('Please fill in all required fields (*).');
+  return ok;
+}
+
+// ─── SUMMARY ─────────────────────────────────────
+function buildSummary(){
+  const dia=DIAMONDS.find(d=>d.id===S.reqDiamond);
+  const rows=[
+    ['Date',fmtLong(S.reqDate)],['Field',dia.label+(dia.mainOf?' &#9978; (outfield section)':'')],
+    ['Time',fmt12(document.getElementById('selS').value)+' – '+fmt12(document.getElementById('selE').value)],
+    ['Booking Type',document.getElementById('selT').value],['Team',document.getElementById('fTeam').value],
+    ['Division',document.getElementById('fDiv').value],['Contact',document.getElementById('fName').value],
+    ['Phone',document.getElementById('fPhone').value],['Email',document.getElementById('fEmail').value],
+  ];
+  const notes=document.getElementById('fNotes').value.trim();
+  if(notes) rows.push(['Notes',notes]);
+  document.getElementById('sBox').innerHTML=rows.map(([l,v])=>`<div class="srow"><span class="slbl">${l}</span><span class="sval">${v}</span></div>`).join('');
+}
+
+// ─── SUBMIT ──────────────────────────────────────
+async function submitBk(){
+  const dia=DIAMONDS.find(d=>d.id===S.reqDiamond);
+  const bk={
+    id:newId(), diamond:S.reqDiamond, dLabel:dia.label, date:S.reqDate,
+    start:document.getElementById('selS').value, end:document.getElementById('selE').value,
+    bkType:document.getElementById('selT').value,
+    teamName:document.getElementById('fTeam').value.trim(),
+    division:document.getElementById('fDiv').value,
+    contact:document.getElementById('fName').value.trim(),
+    phone:document.getElementById('fPhone').value.trim(),
+    email:document.getElementById('fEmail').value.trim(),
+    notes:document.getElementById('fNotes').value.trim(),
+    status:'pending', submittedAt:new Date().toISOString(),
+  };
+
+  setLoading(true);
+  // Always save to localStorage immediately so the booking survives a page reload
+  // even if the Google Sheets API call fails or is blocked by CORS
+  const localAll=localLoad(); localAll.push(bk); localSave(localAll);
+  if (CFG.scriptUrl) {
+    await apiPost({ action:'submit', booking:bk });
+    await refreshCache();
+  } else {
+    CACHE=localAll;
+  }
+  setLoading(false);
+
+  document.getElementById('mDetail').innerHTML=`<strong>Booking ID:</strong> ${bk.id}<br><strong>${bk.dLabel}</strong> · ${fmtLong(bk.date)}<br>${fmt12(bk.start)} – ${fmt12(bk.end)} · ${bk.teamName}`;
+  document.getElementById('mSuccess').classList.add('open');
+  resetForm();
+}
+function closeModal(){ document.getElementById('mSuccess').classList.remove('open'); }
+function resetForm(){
+  S.reqDate=null; S.reqDiamond=null; S.start=null; S.end=null;
+  ['fTeam','fDiv','fName','fPhone','fEmail','fNotes'].forEach(id=>{ const el=document.getElementById(id); if(el){el.value='';el.classList.remove('err');} });
+  for(let i=1;i<=5;i++){
+    document.getElementById('sc-'+i).style.display=i===1?'block':'none';
+    const si=document.getElementById('si-'+i); si.classList.remove('active','done'); if(i===1) si.classList.add('active');
+  }
+  renderReqCal(); renderCal();
+}
+
+// ─── SCHEDULE LIST ───────────────────────────────
+function shiftWk(d){ S.wkOff+=d; renderSched(); }
+function resetWk(){ S.wkOff=0; renderSched(); }
+function wkDates(off){
+  const t=new Date(), sun=new Date(t); sun.setDate(t.getDate()-t.getDay()+off*7);
+  return Array.from({length:7},(_,i)=>{ const d=new Date(sun); d.setDate(sun.getDate()+i); return d; });
+}
+function renderSched(){
+  const wk=wkDates(S.wkOff);
+  const ms=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  document.getElementById('wkLabel').textContent=
+    `${DAYSS[wk[0].getDay()]} ${ms[wk[0].getMonth()]} ${wk[0].getDate()} – `+
+    `${DAYSS[wk[6].getDay()]} ${ms[wk[6].getMonth()]} ${wk[6].getDate()}, ${wk[6].getFullYear()}`;
+  const fb=document.getElementById('fBar');
+  if(!fb.children.length){
+    fb.innerHTML=`<span class="chip on" onclick="setFilt('all',this)">All Fields</span>
+      <span class="chip" onclick="setFilt('other',this)">Diamonds #1·6·7</span>
+      <span class="chip" onclick="setFilt('c2',this)">#2 Complex</span>
+      <span class="chip" onclick="setFilt('c3',this)">#3 Complex</span>
+      <span class="chip" onclick="setFilt('c4',this)">#4 Complex</span>
+      <span class="chip" onclick="setFilt('c5',this)">#5 Complex</span>`;
+  }
+  const wkS=fd(wk[0]), wkE=fd(wk[6]);
+  let bks=loadBK().filter(b=>b.status!=='denied'&&b.date>=wkS&&b.date<=wkE);
+  if(S.schedFilt!=='all') bks=bks.filter(b=>{ const d=DIAMONDS.find(x=>x.id===b.diamond); return d&&d.group===S.schedFilt; });
+  bks.sort((a,b)=>a.date.localeCompare(b.date)||a.start.localeCompare(b.start));
+  if(!bks.length){ document.getElementById('schedContent').innerHTML='<div class="empty"><div class="ei">&#128219;</div><p>No bookings this week.</p></div>'; return; }
+  const byDate={};
+  bks.forEach(b=>{ if(!byDate[b.date]) byDate[b.date]=[]; byDate[b.date].push(b); });
+  let h='';
+  Object.keys(byDate).sort().forEach(dt=>{
+    const d=new Date(dt+'T00:00:00');
+    h+=`<div class="day-block"><div class="day-lbl">${DAYSL[d.getDay()]}, ${MONTHS[d.getMonth()]} ${d.getDate()}</div>`;
+    byDate[dt].forEach(b=>{ h+=bkHtml(b,false); });
+    h+='</div>';
+  });
+  document.getElementById('schedContent').innerHTML=h;
+}
+function setFilt(f,el){ S.schedFilt=f; document.querySelectorAll('#fBar .chip').forEach(c=>c.classList.remove('on')); el.classList.add('on'); renderSched(); }
+
+// ─── BOOKING ITEM HTML ───────────────────────────
+function bkHtml(b,isAdmin){
+  const dia=DIAMONDS.find(d=>d.id===b.diamond), color=dia?dia.color:'#555';
+  const short=b.dLabel.replace('Diamond ','');
+  const pill=`<span class="pill pill-${b.status[0]}">${b.status}</span>`;
+  let acts='';
+  if(isAdmin){
+    const isClosure=b.bkType==='FieldClosure';
+    acts=`<div class="bk-acts">
+      ${!isClosure&&b.status==='pending'?`<button class="btn btn-g btn-sm" onclick="setStatus('${b.id}','approved')">&#10003; Approve</button>
+        <button class="btn btn-r btn-sm" onclick="setStatus('${b.id}','denied')">&#10007; Deny</button>`:''}
+      ${!isClosure&&b.status==='approved'?`<button class="btn btn-r btn-sm" onclick="setStatus('${b.id}','denied')">Revoke</button>`:''}
+      ${!isClosure?`<button class="btn btn-o btn-sm" onclick="openEditModal('${b.id}')">&#9999;&#65039; Edit</button>`:''}
+      <button class="btn btn-o btn-sm" style="border-color:var(--red);color:var(--red)" onclick="delBk('${b.id}')">&#128465; Delete</button>
+    </div>`;
+  }
+  const chk=isAdmin?`<input type="checkbox" class="bk-sel" data-id="${b.id}" onchange="updateBulkUI()" style="margin-right:6px;margin-top:2px;flex-shrink:0;cursor:pointer">`:'';
+  return `<div class="bk-item" style="align-items:flex-start">
+    ${chk}<div class="bk-badge" style="background:${color}">${short}</div>
+    <div class="bk-info">
+      <div class="bk-team">${b.teamName} &mdash; ${b.bkType}</div>
+      <div class="bk-meta">
+        &#128197; ${fmtLong(b.date)} &nbsp;|&nbsp; &#9200; ${fmt12(b.start)}–${fmt12(b.end)} &nbsp;|&nbsp; &#128101; ${b.division}<br>
+        &#128205; ${b.dLabel} &nbsp;|&nbsp; &#128100; ${b.contact} &middot; ${b.phone}
+        ${isAdmin?` &middot; <a href="mailto:${b.email}">${b.email}</a>`:''}
+        &nbsp;|&nbsp; ${pill}
+        ${b.notes?`<br>&#128221; ${b.notes}`:''}
+        ${isAdmin?`<br><span style="font-size:.7rem;opacity:.55">ID: ${b.id} &middot; ${new Date(b.submittedAt).toLocaleString()}</span>`:''}
+      </div>${acts}
+    </div>
+  </div>`;
+}
+
+// ─── ADMIN ───────────────────────────────────────
+async function doLogin(){
+  if(document.getElementById('adminPw').value===CFG.adminPassword){
+    S.adminIn=true;
+    document.getElementById('adminLoginCard').style.display='none';
+    document.getElementById('adminPanel').style.display='block';
+
+    // Populate All Bookings filter dropdown
+    const af=document.getElementById('aFiltD');
+    DIAMONDS.forEach(d=>{ af.innerHTML+=`<option value="${d.id}">${d.label}</option>`; });
+
+    initClosureForm();
+
+    setLoading(true);
+    await refreshCache();
+    setLoading(false);
+    renderAdmin();
+  } else alert('Incorrect password.');
+}
+
+function initClosureForm(){
+  // Build field chips
+  const fc=document.getElementById('closureFieldChips');
+  fc.innerHTML='';
+  DIAMONDS.filter(d=>!d.unavailable).forEach(d=>{
+    const lbl=document.createElement('label');
+    lbl.className='cl-chip';
+    lbl.innerHTML=`<input type="checkbox" value="${d.id}"><span class="d-dot" style="background:${d.color};width:9px;height:9px;border-radius:50%;display:inline-block"></span><span>${d.label}</span>`;
+    lbl.querySelector('input').addEventListener('change',function(){
+      lbl.classList.toggle('on',this.checked); updateClosurePreview();
+    });
+    fc.appendChild(lbl);
+  });
+  // Time dropdowns
+  const cs=document.getElementById('closeStart'), ce=document.getElementById('closeEnd');
+  cs.innerHTML=''; ce.innerHTML='';
+  CFG.timeSlots.forEach(t=>{
+    cs.innerHTML+=`<option value="${t}"${t==='17:00'?' selected':''}>${fmt12(t)}</option>`;
+    ce.innerHTML+=`<option value="${t}"${t==='22:00'?' selected':''}>${fmt12(t)}</option>`;
+  });
+}
+
+function selectAllClosureFields(val){
+  document.querySelectorAll('#closureFieldChips .cl-chip').forEach(lbl=>{
+    const cb=lbl.querySelector('input');
+    cb.checked=val; lbl.classList.toggle('on',val);
+  });
+  updateClosurePreview();
+}
+
+function selectAllClosureDays(mode){
+  for(let i=0;i<7;i++){
+    const lbl=document.getElementById('cday-'+i);
+    const cb=lbl.querySelector('input');
+    const on = mode==='all' ? true : mode==='weekdays' ? (i>=1&&i<=5) : (i===0||i===6);
+    cb.checked=on; lbl.classList.toggle('on',on);
+  }
+  updateClosurePreview();
+}
+
+function getClosureDates(from, to, selectedDays){
+  const dates=[], cur=new Date(from+'T00:00:00'), end=new Date(to+'T00:00:00');
+  while(cur<=end){ if(selectedDays.has(cur.getDay())) dates.push(fd(cur)); cur.setDate(cur.getDate()+1); }
+  return dates;
+}
+
+function updateClosurePreview(){
+  const fields=[...document.querySelectorAll('#closureFieldChips input:checked')].map(i=>i.value);
+  const from=document.getElementById('closeDateFrom').value;
+  const to=document.getElementById('closeDateTo').value;
+  const days=new Set([...document.querySelectorAll('.cl-day-chip input:checked, #closureFieldChips ~ div .cl-chip input:checked')].map(i=>Number(i.value)));
+  // Recount using day checkboxes
+  const selectedDays=new Set([...document.querySelectorAll('[id^="cday-"] input:checked')].map(i=>Number(i.value)));
+  const prev=document.getElementById('closurePreview');
+  if(!fields.length||!from||!to){ prev.textContent='Select fields and dates above.'; return; }
+  if(from>to){ prev.textContent='End date must be on or after start date.'; return; }
+  const dates=getClosureDates(from,to,selectedDays);
+  const count=fields.length*dates.length;
+  prev.textContent=count===0?'No matching days in that range.'
+    :`Will create ${count} closure${count!==1?'s':''} — ${fields.length} field${fields.length!==1?'s':''} × ${dates.length} day${dates.length!==1?'s':''}.`;
+  prev.style.color=count>0?'var(--navy)':'var(--dgray)';
+}
+
+async function markFieldClosed(){
+  const fieldIds=[...document.querySelectorAll('#closureFieldChips input:checked')].map(i=>i.value);
+  const from=document.getElementById('closeDateFrom').value;
+  const to=document.getElementById('closeDateTo').value;
+  const start=document.getElementById('closeStart').value;
+  const end=document.getElementById('closeEnd').value;
+  const note=document.getElementById('closeNote').value.trim()||'Field closed — unplayable conditions';
+  const selectedDays=new Set([...document.querySelectorAll('[id^="cday-"] input:checked')].map(i=>Number(i.value)));
+
+  if(!fieldIds.length){alert('Please select at least one field.');return;}
+  if(!from){alert('Please set a From date.');return;}
+  if(!to){alert('Please set a To date. For a single day, set From and To to the same date.');return;}
+  if(from>to){alert('End date must be on or after start date.');return;}
+  if(start>=end){alert('End time must be after start time.');return;}
+  if(!selectedDays.size){alert('Please select at least one day of the week.');return;}
+
+  const dates=getClosureDates(from,to,selectedDays);
+  if(!dates.length){alert('No matching days in that range for the selected days of week.');return;}
+
+  // Find affected existing approved bookings for these fields + dates
+  const affected=CACHE.filter(b=>
+    b.bkType!=='FieldClosure' && b.status==='approved' &&
+    fieldIds.includes(b.diamond) && dates.includes(b.date)
+  );
+  const canNotify=affected.filter(b=>b.email);
+  const noEmail=affected.filter(b=>!b.email);
+
+  const count=fieldIds.length*dates.length;
+  let confirmMsg=`Mark ${count} field-day${count!==1?'s':''} as unplayable?\n\n`
+    +`Fields: ${fieldIds.map(id=>DIAMONDS.find(d=>d.id===id).label).join(', ')}\n`
+    +`Dates: ${fmtLong(dates[0])}${dates.length>1?' → '+fmtLong(dates[dates.length-1]):''}  (${dates.length} day${dates.length!==1?'s':''})`;
+  if(affected.length){
+    confirmMsg+=`\n\n⚠️ ${affected.length} existing booking${affected.length!==1?'s':''} will be affected.`;
+    if(canNotify.length) confirmMsg+=`\n✉️ ${canNotify.length} will receive an email notification.`;
+    if(noEmail.length)   confirmMsg+=`\n⚠️ ${noEmail.length} have no email — notify them manually.`;
+  }
+  if(!confirm(confirmMsg)) return;
+
+  setLoading(true);
+  const bookings=[], localAll=localLoad();
+  fieldIds.forEach(diaId=>{
+    const dia=DIAMONDS.find(d=>d.id===diaId);
+    dates.forEach(date=>{
+      const bk={id:newId(),diamond:diaId,dLabel:dia.label,date,start,end,
+                bkType:'FieldClosure',teamName:'Field Closed',division:'',
+                contact:'Admin',phone:'',email:'',notes:note,
+                status:'approved',submittedAt:new Date().toISOString()};
+      bookings.push(bk); localAll.push(bk);
+    });
+  });
+  localSave(localAll);
+
+  if(CFG.scriptUrl){
+    for(const bk of bookings){
+      await apiPost({action:'submit',booking:bk});
+      // Explicitly force-approve on the server so the sheet always shows green,
+      // regardless of which GAS version is deployed
+      await apiPost({action:'updateStatus',id:bk.id,status:'approved',adminKey:CFG.adminPassword,adminNotes:''});
+    }
+    // Send email notifications for affected bookings that have emails
+    // Pass full booking data so GAS doesn't need a sheet lookup (works for legacy + new bookings)
+    const notifyResults=[];
+    for(const bk of canNotify){
+      const nr=await apiPost({
+        action:'notifyFieldClosure',
+        bookingId:bk.id,
+        booking:{email:bk.email,contact:bk.contact,dLabel:bk.dLabel,date:bk.date,
+                 start:bk.start,end:bk.end,teamName:bk.teamName},
+        closureNote:note,
+        adminKey:CFG.adminPassword
+      });
+      notifyResults.push({bk,res:nr});
+    }
+    await refreshCache();
+
+    // Show notification summary
+    const sent=notifyResults.filter(r=>r.res&&r.res.success);
+    const failed=notifyResults.filter(r=>!r.res||r.res.error||r.res.emailError);
+    let notifySummary='';
+    if(sent.length) notifySummary+=`✅ Notified ${sent.length} requestor${sent.length!==1?'s':''} by email.\n`;
+    if(failed.length){
+      notifySummary+=`❌ Failed to notify ${failed.length} requestor${failed.length!==1?'s':''}:\n`;
+      failed.forEach(r=>{ notifySummary+=`  • ${r.bk.contact} (${r.bk.email}) — ${(r.res&&(r.res.error||r.res.emailError))||'Unknown error'}\n`; });
+      notifySummary+=`\nTip: Run testEmail() in Apps Script editor to fix email authorization.`;
+    }
+    if(notifySummary) alert(notifySummary.trim());
+
+  } else {
+    CACHE=[...CACHE,...bookings];
+  }
+  setLoading(false);
+  renderAdmin(); renderCal();
+
+  // Summary for manual-contact cases (no email on file)
+  if(noEmail.length){
+    const names=noEmail.map(b=>`• ${b.teamName} — ${b.dLabel}, ${b.date} (${b.contact})`).join('\n');
+    alert(`Field${count!==1?'s':''} closed successfully.\n\n⚠️ The following bookings have no email on file — please contact them directly:\n\n${names}`);
+  }
+
+  // Reset form
+  document.getElementById('closeDateFrom').value='';
+  document.getElementById('closeDateTo').value='';
+  document.getElementById('closeNote').value='';
+  selectAllClosureFields(false);
+  updateClosurePreview();
+}
+function doLogout(){ S.adminIn=false; document.getElementById('adminLoginCard').style.display='block'; document.getElementById('adminPanel').style.display='none'; document.getElementById('adminPw').value=''; }
+function renderAdmin(){
+  const all=loadBK();
+  const dF=document.getElementById('aFiltD').value;
+  const sF=document.getElementById('aFiltS').value;
+  const tF=document.getElementById('aFiltT').value;
+  const pending=all.filter(b=>b.status==='pending'&&b.bkType!=='FieldClosure');
+  document.getElementById('pendingList').innerHTML=pending.length
+    ?pending.map(b=>bkHtml(b,true)).join('')
+    :'<div class="empty" style="padding:20px"><div class="ei">&#127881;</div><p>No pending requests.</p></div>';
+  let fil=[...all].sort((a,b)=>b.submittedAt.localeCompare(a.submittedAt));
+  if(dF) fil=fil.filter(b=>b.diamond===dF);
+  if(sF) fil=fil.filter(b=>b.status===sF);
+  if(tF==='booking') fil=fil.filter(b=>b.bkType!=='FieldClosure');
+  if(tF==='closure') fil=fil.filter(b=>b.bkType==='FieldClosure');
+  document.getElementById('allList').innerHTML=fil.length
+    ?fil.map(b=>bkHtml(b,true)).join('')
+    :'<div class="empty" style="padding:20px"><p>No bookings match your filter.</p></div>';
+  // reset select-all checkbox & bulk button
+  const sa=document.getElementById('selectAll');
+  if(sa) sa.checked=false;
+  updateBulkUI();
+}
+
+function updateBulkUI(){
+  const checked=document.querySelectorAll('.bk-sel:checked');
+  const btn=document.getElementById('bulkDelBtn');
+  const cnt=document.getElementById('selCount');
+  if(cnt) cnt.textContent=checked.length;
+  if(btn) btn.style.display=checked.length>0?'':'none';
+}
+
+function toggleSelectAll(on){
+  document.querySelectorAll('.bk-sel').forEach(cb=>cb.checked=on);
+  updateBulkUI();
+}
+
+async function bulkDelete(){
+  const checked=[...document.querySelectorAll('.bk-sel:checked')];
+  if(!checked.length) return;
+  if(!confirm(`Permanently delete ${checked.length} booking${checked.length!==1?'s':''}?`)) return;
+  const ids=checked.map(cb=>cb.dataset.id);
+  setLoading(true);
+  // Optimistic update
+  CACHE=CACHE.filter(b=>!ids.includes(b.id));
+  renderAdmin(); renderCal();
+  for(const id of ids){
+    if(CFG.scriptUrl && !id.startsWith('LGC')){
+      await apiPost({action:'delete',id,adminKey:CFG.adminPassword});
+    }
+  }
+  // Clean up localStorage
+  const loc=localLoad().filter(b=>!ids.includes(b.id)); localSave(loc);
+  await refreshCache();
+  setLoading(false);
+  renderAdmin(); renderCal();
+}
+
+async function clearCacheResync(){
+  if(!confirm('This will clear the local cache and re-fetch everything from Google Sheets.\n\nAny bookings that exist only in local storage (not yet synced to Google Sheets) will be lost.\n\nContinue?')) return;
+  setLoading(true);
+  localSave([]);           // wipe localStorage
+  CACHE=[];
+  await refreshCache();    // fresh pull from server
+  setLoading(false);
+  renderAdmin(); renderCal();
+  alert('Cache cleared and resynced from Google Sheets.');
+}
+// Pending status change — stored while the notes modal is open
+let _pendingStatus = null;
+
+function setStatus(id, status){
+  // Open the notes modal before committing the change
+  const bk = CACHE.find(b=>b.id===id);
+  const label = status==='approved' ? 'Approve' : status==='denied' ? 'Deny' : 'Revoke';
+  const colour = status==='approved' ? 'var(--green)' : 'var(--red)';
+  document.getElementById('notesModalTitle').textContent = label + ' Booking';
+  document.getElementById('notesModalTitle').style.color = colour;
+  document.getElementById('notesModalSub').textContent =
+    'Optionally include a note in the ' + status + ' email sent to ' + (bk ? bk.contact : 'the requestor') + '.';
+  document.getElementById('notesModalDetail').innerHTML = bk
+    ? `<strong>${bk.teamName}</strong> &mdash; ${bk.dLabel}<br>${fmtLong(bk.date)} &nbsp;${fmt12(bk.start)}–${fmt12(bk.end)}`
+    : '';
+  document.getElementById('adminNotesInput').value = '';
+  // Colour the Send button to match the action
+  document.getElementById('notesSendBtn').style.background = status==='approved' ? 'var(--green)' : 'var(--red)';
+  _pendingStatus = {id, status};
+  document.getElementById('notesModal').classList.add('open');
+}
+
+function cancelNotesModal(){
+  _pendingStatus = null;
+  document.getElementById('notesModal').classList.remove('open');
+}
+
+async function executeStatusChange(adminNotes){
+  document.getElementById('notesModal').classList.remove('open');
+  if(!_pendingStatus) return;
+  const {id, status} = _pendingStatus;
+  _pendingStatus = null;
+
+  setLoading(true);
+  // Optimistic update — change CACHE immediately so the UI responds right away
+  const idx=CACHE.findIndex(b=>b.id===id);
+  if(idx!==-1) CACHE[idx]={...CACHE[idx],status};
+  renderAdmin(); renderCal();
+
+  if(CFG.scriptUrl && !id.startsWith('LGC')){
+    // Pass booking data from CACHE so GAS doesn't need to re-read email from sheet
+    const bkData = idx!==-1 ? CACHE[idx] : CACHE.find(b=>b.id===id);
+    const booking = bkData ? {email:bkData.email,contact:bkData.contact,dLabel:bkData.dLabel,
+                               date:bkData.date,start:bkData.start,end:bkData.end,
+                               teamName:bkData.teamName,division:bkData.division} : null;
+    const res=await apiPost({action:'updateStatus',id,status,adminKey:CFG.adminPassword,adminNotes:adminNotes||'',booking});
+    if(res && res.error){ alert('Server error: '+res.error); }
+    else if(res && res.emailError){ alert('⚠️ Status updated successfully.\n\nHowever, the notification email could NOT be sent:\n\n'+res.emailError+'\n\nPlease notify the requestor manually, or run testEmail() in Apps Script to fix email authorization.'); }
+    else if(res && res.emailSentTo){ alert('✅ Status updated and email sent to: '+res.emailSentTo); }
+    const loc=localLoad(), lb=loc.find(b=>b.id===id);
+    if(lb){lb.status=status; localSave(loc);}
+    await refreshCache();
+  } else {
+    const all=localLoad(), bk=all.find(b=>b.id===id);
+    if(bk){bk.status=status; localSave(all);}
+    else { localSave([...localLoad(),{...CACHE[idx]}]); }
+  }
+  setLoading(false);
+  renderAdmin(); renderCal();
+}
+async function delBk(id){
+  if(!confirm('Permanently delete this booking?')) return;
+  setLoading(true);
+  // Optimistic update
+  CACHE=CACHE.filter(b=>b.id!==id);
+  renderAdmin(); renderCal();
+
+  if(CFG.scriptUrl && !id.startsWith('LGC')){
+    const res=await apiPost({action:'delete',id,adminKey:CFG.adminPassword});
+    if(res && res.error){ alert('Server error: '+res.error); }
+    const loc=localLoad().filter(b=>b.id!==id); localSave(loc);
+    await refreshCache();
+  } else {
+    const all=localLoad().filter(b=>b.id!==id); localSave(all);
+  }
+  setLoading(false);
+  renderAdmin(); renderCal();
+}
+
+// ─── EDIT BOOKING MODAL ──────────────────────────
+let _editId=null;
+function openEditModal(id){
+  const bk=CACHE.find(b=>b.id===id);
+  if(!bk){alert('Booking not found.');return;}
+  _editId=id;
+  // Diamond dropdown
+  const dSel=document.getElementById('eDiamond');
+  dSel.innerHTML=DIAMONDS.filter(d=>!d.unavailable).map(d=>
+    `<option value="${d.id}"${d.id===bk.diamond?' selected':''}>${d.label}</option>`
+  ).join('');
+  // Time dropdowns
+  const eS=document.getElementById('eStart'), eE=document.getElementById('eEnd');
+  eS.innerHTML=''; eE.innerHTML='';
+  CFG.timeSlots.forEach(t=>{
+    eS.innerHTML+=`<option value="${t}"${t===bk.start?' selected':''}>${fmt12(t)}</option>`;
+    eE.innerHTML+=`<option value="${t}"${t===bk.end?' selected':''}>${fmt12(t)}</option>`;
+  });
+  // Other fields
+  document.getElementById('eDate').value=bk.date||'';
+  const bt=document.getElementById('eBkType');
+  [...bt.options].forEach(o=>o.selected=o.value===bk.bkType);
+  document.getElementById('eTeam').value=bk.teamName||'';
+  document.getElementById('eDiv').value=bk.division||'';
+  document.getElementById('eContact').value=bk.contact||'';
+  document.getElementById('ePhone').value=bk.phone||'';
+  document.getElementById('eEmail').value=bk.email||'';
+  document.getElementById('eNotes').value=bk.notes||'';
+  document.getElementById('editModal').classList.add('open');
+}
+function closeEditModal(){
+  document.getElementById('editModal').classList.remove('open');
+  _editId=null;
+}
+async function saveEditModal(){
+  const id=_editId; if(!id) return;
+  const dSel=document.getElementById('eDiamond');
+  const dia=DIAMONDS.find(d=>d.id===dSel.value);
+  const updates={
+    diamond:dSel.value,
+    dLabel:dia?dia.label:dSel.value,
+    date:document.getElementById('eDate').value,
+    bkType:document.getElementById('eBkType').value,
+    start:document.getElementById('eStart').value,
+    end:document.getElementById('eEnd').value,
+    teamName:document.getElementById('eTeam').value.trim(),
+    division:document.getElementById('eDiv').value.trim(),
+    contact:document.getElementById('eContact').value.trim(),
+    phone:document.getElementById('ePhone').value.trim(),
+    email:document.getElementById('eEmail').value.trim(),
+    notes:document.getElementById('eNotes').value.trim(),
+  };
+  closeEditModal();
+  setLoading(true);
+  // Optimistic update in CACHE
+  const idx=CACHE.findIndex(b=>b.id===id);
+  if(idx!==-1) CACHE[idx]={...CACHE[idx],...updates};
+  // Update localStorage
+  const loc=localLoad(), li=loc.findIndex(b=>b.id===id);
+  if(li!==-1){loc[li]={...loc[li],...updates};localSave(loc);}
+  else{localSave([...loc,...(idx!==-1?[CACHE[idx]]:[])]);}
+  renderAdmin(); renderCal();
+  if(CFG.scriptUrl && !id.startsWith('LGC')){
+    const res=await apiPost({action:'updateBooking',id,updates,adminKey:CFG.adminPassword});
+    if(res&&res.error) alert('Server error: '+res.error);
+    await refreshCache();
+  }
+  setLoading(false);
+  renderAdmin(); renderCal();
+}
+
+// ─── EXPORT CSV ──────────────────────────────────
+function exportCSV(){
+  const all=loadBK(); if(!all.length){alert('No bookings to export.');return}
+  const hdrs=['ID','Diamond','Date','Start','End','Type','Team','Division','Contact','Phone','Email','Status','Notes','Submitted'];
+  const rows=all.map(b=>[b.id,b.dLabel,b.date,b.start,b.end,b.bkType,b.teamName,b.division,b.contact,b.phone,b.email,b.status,(b.notes||'').replace(/"/g,"'"),b.submittedAt]);
+  const csv=[hdrs,...rows].map(r=>r.map(v=>`"${v}"`).join(',')).join('\r\n');
+  const url=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  Object.assign(document.createElement('a'),{href:url,download:`srmb-bookings-${fd(new Date())}.csv`}).click();
+  URL.revokeObjectURL(url);
+}
+
+// ─── LOADING OVERLAY ────────────────────────────
+function setLoading(on) {
+  document.getElementById('loadingOverlay').style.display = on ? 'flex' : 'none';
+}
+
+// ─── INIT ────────────────────────────────────────
+document.getElementById('hdrDate').textContent=
+  new Date().toLocaleDateString('en-CA',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+
+(async () => {
+  // Hash-based routing — allows direct links like yoursite.com#schedule
+  // Use this on srmb.ca:
+  //   Diamond Scheduler  → yoursite.netlify.app          (opens calendar)
+  //   Already Reserved   → yoursite.netlify.app#schedule (opens schedule list)
+  const hashView = window.location.hash.replace('#','').toLowerCase();
+  if (hashView === 'schedule' || hashView === 'list') {
+    document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));
+    document.getElementById('view-schedule').classList.add('active');
+    document.querySelector('nav button[onclick*="schedule"]').classList.add('active');
+  } else if (hashView === 'request' || hashView === 'book') {
+    document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));
+    document.getElementById('view-request').classList.add('active');
+    document.querySelector('nav button[onclick*="request"]').classList.add('active');
+  }
+
+  // Show connection status badge
+  const badge = document.getElementById('connBadge');
+  if (CFG.scriptUrl) {
+    badge.textContent = '🟢 Live · Google Sheets';
+    badge.style.background = 'rgba(26,122,60,.8)';
+    badge.style.color = '#fff';
+  } else {
+    badge.textContent = '🟡 Local mode · set scriptUrl to go live';
+    badge.style.background = 'rgba(183,119,13,.8)';
+    badge.style.color = '#fff';
+  }
+
+  setLoading(true);
+  await refreshCache();
+  setLoading(false);
+  renderCal();
+  renderReqCal();
+  renderSchedule();
+})();
+</script>
+</body>
+</html>
