@@ -516,8 +516,12 @@
       </div>
     </div>
     <div class="card">
-      <div class="card-title">⛔ Mark Fields Unplayable</div>
-      <p style="font-size:.83rem;color:var(--dgray);margin-bottom:16px">
+      <div class="card-title" style="cursor:pointer;user-select:none;display:flex;align-items:center;justify-content:space-between" onclick="toggleClosurePanel()">
+        <span>⛔ Mark Fields Unplayable</span>
+        <span id="closurePanelArrow" style="font-size:1.1rem;transition:transform .2s;display:inline-block">▶</span>
+      </div>
+      <div id="closurePanelBody" style="display:none">
+      <p style="font-size:.83rem;color:var(--dgray);margin-bottom:16px;margin-top:12px">
         Select one or more fields, a date range, and which days of the week apply. All selected fields will be blocked for every matching day.
       </p>
 
@@ -590,6 +594,7 @@
         <div id="closurePreview" style="font-size:.82rem;color:var(--dgray);font-style:italic">Select fields and dates above.</div>
         <button class="btn btn-r" onclick="markFieldClosed()">⛔ Mark as Unplayable</button>
       </div>
+      </div><!-- /closurePanelBody -->
     </div>
     <!-- Admin Calendar -->
     <div class="card">
@@ -634,6 +639,13 @@
           <option value="booking">Bookings only</option>
           <option value="closure">Closures only</option>
         </select>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;align-items:center">
+        <label style="font-size:.78rem;font-weight:600;color:var(--navy);white-space:nowrap">Date from</label>
+        <input type="date" id="aFiltFrom" onchange="renderAdmin()" style="border:1.5px solid var(--mid);border-radius:7px;padding:5px 8px;font-family:inherit;font-size:.83rem">
+        <label style="font-size:.78rem;font-weight:600;color:var(--navy);white-space:nowrap">to</label>
+        <input type="date" id="aFiltTo" onchange="renderAdmin()" style="border:1.5px solid var(--mid);border-radius:7px;padding:5px 8px;font-family:inherit;font-size:.83rem">
+        <button class="btn btn-sm btn-o" style="font-size:.75rem;padding:4px 10px" onclick="document.getElementById('aFiltFrom').value='';document.getElementById('aFiltTo').value='';renderAdmin()">Clear dates</button>
       </div>
       <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
         <label style="font-size:.8rem;display:flex;align-items:center;gap:5px;cursor:pointer">
@@ -1766,21 +1778,32 @@ async function markFieldClosed(){
   selectAllClosureFields(false);
   updateClosurePreview();
 }
+function toggleClosurePanel(){
+  const body=document.getElementById('closurePanelBody');
+  const arrow=document.getElementById('closurePanelArrow');
+  const open=body.style.display==='none';
+  body.style.display=open?'block':'none';
+  arrow.style.transform=open?'rotate(90deg)':'rotate(0deg)';
+}
 function doLogout(){ S.adminIn=false; document.getElementById('adminLoginCard').style.display='block'; document.getElementById('adminPanel').style.display='none'; document.getElementById('adminPw').value=''; }
 function renderAdmin(){
   const all=loadBK();
   const dF=document.getElementById('aFiltD').value;
   const sF=document.getElementById('aFiltS').value;
   const tF=document.getElementById('aFiltT').value;
+  const fromF=document.getElementById('aFiltFrom').value;
+  const toF=document.getElementById('aFiltTo').value;
   const pending=all.filter(b=>b.status==='pending'&&b.bkType!=='FieldClosure');
   document.getElementById('pendingList').innerHTML=pending.length
     ?pending.map(b=>bkHtml(b,true)).join('')
     :'<div class="empty" style="padding:20px"><div class="ei">&#127881;</div><p>No pending requests.</p></div>';
-  let fil=[...all].sort((a,b)=>b.submittedAt.localeCompare(a.submittedAt));
+  let fil=[...all].sort((a,b)=>a.date.localeCompare(b.date)||a.start.localeCompare(b.start));
   if(dF) fil=fil.filter(b=>b.diamond===dF);
   if(sF) fil=fil.filter(b=>b.status===sF);
   if(tF==='booking') fil=fil.filter(b=>b.bkType!=='FieldClosure');
   if(tF==='closure') fil=fil.filter(b=>b.bkType==='FieldClosure');
+  if(fromF) fil=fil.filter(b=>b.date>=fromF);
+  if(toF)   fil=fil.filter(b=>b.date<=toF);
   document.getElementById('allList').innerHTML=fil.length
     ?fil.map(b=>bkHtml(b,true)).join('')
     :'<div class="empty" style="padding:20px"><p>No bookings match your filter.</p></div>';
