@@ -820,13 +820,11 @@ const CFG = {
 
 // ─── DIAMONDS / FIELDS ─────────────────────────
 const DIAMONDS = [
-  // ── Optimist Park – standard diamonds ─────────────────────────────────────
-  { id:'D1',    label:'Diamond #1',       section:'Optimist Park',  group:'other',   color:'#c0392b' },
+  // ── D1 ────────────────────────────────────────────────────────────────────
+  { id:'D1',    label:'Diamond #1',        section:'Optimist Park',  group:'other',   color:'#c0392b' },
   // ── Diamond #2 complex ────────────────────────────────────────────────────
-  { id:'D2',    label:'Diamond #2 (Main)',      section:'Optimist Park',  group:'c2',      color:'#922b21', isMain:true },
-  { id:'D2S',   label:'Diamond #2 (CF)',         section:'Optimist Park',  group:'c2',      color:'#e74c3c', mainOf:'D2' },
-  { id:'D6',    label:'Diamond #6',       section:'Optimist Park',  group:'other',   color:'#c0392b' },
-  { id:'D7',    label:'Diamond #7',       section:'Optimist Park',  group:'other',   color:'#273746' },
+  { id:'D2',    label:'Diamond #2 (Main)', section:'Optimist Park',  group:'c2',      color:'#922b21', isMain:true },
+  { id:'D2S',   label:'Diamond #2 (CF)',   section:'Optimist Park',  group:'c2',      color:'#e74c3c', mainOf:'D2' },
   // ── Diamond #3 complex ────────────────────────────────────────────────────
   { id:'D3',    label:'Diamond #3 (Main)', section:'Optimist Park',  group:'c3',      color:'#7d3c98', isMain:true },
   { id:'D3LF',  label:'Diamond #3 LF',    section:'Optimist Park',  group:'c3',      color:'#9b59b6', mainOf:'D3' },
@@ -839,11 +837,14 @@ const DIAMONDS = [
   { id:'D5',    label:'Diamond #5 (Main)', section:'Optimist Park',  group:'c5',      color:'#1a7a3c', isMain:true },
   { id:'D5LF',  label:'Diamond #5 LF',    section:'Optimist Park',  group:'c5',      color:'#27ae60', mainOf:'D5' },
   { id:'D5RF',  label:'Diamond #5 RF',    section:'Optimist Park',  group:'c5',      color:'#27ae60', mainOf:'D5' },
-  // ── Other bookable areas at Optimist Park ─────────────────────────────────
-  { id:'LTP3',  label:'LTP3 (enclosed fence area closest to washrooms)', section:'Other Areas', group:'ltp',     color:'#16a085' },
-  { id:'LTP4',  label:'LTP4 (enclosed area furthest from washrooms)',  section:'Other Areas', group:'ltp',     color:'#16a085' },
+  // ── D6 · D7 ───────────────────────────────────────────────────────────────
+  { id:'D6',    label:'Diamond #6',        section:'Optimist Park',  group:'other',   color:'#c0392b' },
+  { id:'D7',    label:'Diamond #7',        section:'Optimist Park',  group:'other',   color:'#273746' },
+  // ── Other bookable areas ──────────────────────────────────────────────────
   { id:'PARK1', label:'LTP1 (right beside D1)',                        section:'Other Areas', group:'parking', color:'#7f8c8d' },
   { id:'PARK2', label:'LTP2 (right beside parking lot)',               section:'Other Areas', group:'parking', color:'#7f8c8d' },
+  { id:'LTP3',  label:'LTP3 (enclosed fence area closest to washrooms)', section:'Other Areas', group:'ltp',   color:'#16a085' },
+  { id:'LTP4',  label:'LTP4 (enclosed area furthest from washrooms)',    section:'Other Areas', group:'ltp',   color:'#16a085' },
   // ── Grand Pointe — not available ─────────────────────────────────────────
   { id:'GP1',   label:'Grand Pointe #1',  section:'Grand Pointe',   group:'gp',      color:'#aab7b8', unavailable:true },
   { id:'GP2',   label:'Grand Pointe #2',  section:'Grand Pointe',   group:'gp',      color:'#aab7b8', unavailable:true },
@@ -1213,10 +1214,13 @@ function _doRenderCal(gridId, labelId){
     const ds=`${S.yr}-${p2(S.mo+1)}-${p2(d)}`;
     const dt=new Date(S.yr,S.mo,d);
     const isPast=dt<new Date(today.getFullYear(),today.getMonth(),today.getDate());
-    // Closures always sort to top; regular bookings by start time
+    // Sort by diamond order (DIAMONDS array index), then start time within same field
+    const diaIdx=id=>{ const i=DIAMONDS.findIndex(d=>d.id===id); return i===-1?999:i; };
     const dayBks=(byDate[ds]||[]).sort((a,b)=>{
       const ac=a.bkType==='FieldClosure', bc=b.bkType==='FieldClosure';
       if(ac&&!bc) return -1; if(!ac&&bc) return 1;
+      const di=diaIdx(a.diamond)-diaIdx(b.diamond);
+      if(di!==0) return di;
       return a.start.localeCompare(b.start);
     });
     const closures=dayBks.filter(b=>b.bkType==='FieldClosure');
