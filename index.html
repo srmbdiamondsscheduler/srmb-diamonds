@@ -501,9 +501,11 @@
   <div class="card">
     <div class="card-title">📋 Full Schedule List</div>
     <div class="sched-ctrl">
-      <button class="icon-btn" onclick="shiftWk(-1)">&#8249;</button>
+      <button class="icon-btn" onclick="shiftWk(-7)" title="Previous week">&#8249;&#8249;</button>
+      <button class="icon-btn" onclick="shiftWk(-1)" title="Previous day">&#8249;</button>
       <span class="wk-label" id="wkLabel"></span>
-      <button class="icon-btn" onclick="shiftWk(1)">&#8250;</button>
+      <button class="icon-btn" onclick="shiftWk(1)" title="Next day">&#8250;</button>
+      <button class="icon-btn" onclick="shiftWk(7)" title="Next week">&#8250;&#8250;</button>
       <button class="btn btn-o btn-sm" onclick="resetWk()">Today</button>
       <button class="btn btn-o btn-sm" onclick="window.print()">&#128424; Print</button>
     </div>
