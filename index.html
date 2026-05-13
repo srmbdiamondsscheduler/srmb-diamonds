@@ -1094,7 +1094,7 @@ function showView(btn,v){
   document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));
   document.getElementById('view-'+v).classList.add('active');
   btn.classList.add('active');
-  if(v==='schedule') renderSched();
+  if(v==='schedule'){ S.wkOff=0; renderSched(); }
   if(v==='admin'&&S.adminIn) renderAdmin();
 }
 
@@ -1601,7 +1601,8 @@ function renderSched(){
   const wkS=fd(wk[0]), wkE=fd(wk[6]);
   let bks=loadBK().filter(b=>b.status!=='denied'&&b.date>=wkS&&b.date<=wkE);
   if(S.schedFilt!=='all') bks=bks.filter(b=>{ const d=DIAMONDS.find(x=>x.id===b.diamond); return d&&d.group===S.schedFilt; });
-  bks.sort((a,b)=>a.date.localeCompare(b.date)||a.start.localeCompare(b.start));
+  const _dOrder={}; DIAMONDS.forEach((d,i)=>_dOrder[d.id]=i);
+  bks.sort((a,b)=>a.date.localeCompare(b.date)||a.start.localeCompare(b.start)||(_dOrder[a.diamond]??99)-(_dOrder[b.diamond]??99));
   if(!bks.length){ document.getElementById('schedContent').innerHTML='<div class="empty"><div class="ei">&#128219;</div><p>No bookings this week.</p></div>'; return; }
   const byDate={};
   bks.forEach(b=>{ if(!byDate[b.date]) byDate[b.date]=[]; byDate[b.date].push(b); });
