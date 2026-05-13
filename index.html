@@ -205,7 +205,7 @@
     .bk-acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}
 
     .sched-ctrl{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px}
-    .wk-label{font-weight:700;font-size:.9rem;min-width:210px;text-align:center}
+    .wk-label{font-weight:700;font-size:.9rem;min-width:270px;text-align:center}
     .fbar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:13px}
     .chip{padding:5px 13px;border-radius:20px;border:1.5px solid var(--mid);background:#fff;
           font-size:.78rem;font-weight:600;cursor:pointer;color:var(--dgray);transition:all .12s}
@@ -1267,7 +1267,7 @@ function _doRenderCal(gridId, labelId){
 }
 
 function shiftMonth(d){ S.mo+=d; if(S.mo<0){S.mo=11;S.yr--} if(S.mo>11){S.mo=0;S.yr++} renderCal(); }
-function jumpToday(){ const n=new Date(); S.yr=n.getFullYear(); S.mo=n.getMonth(); renderCal(); }
+function jumpToday(){ const n=new Date(); S.yr=n.getFullYear(); S.mo=n.getMonth(); renderCal(); pickDay(fd(n)); }
 
 // ─── DAY DETAIL ─────────────────────────────────
 function pickDay(ds){
@@ -1579,16 +1579,13 @@ function resetForm(){
 // ─── SCHEDULE LIST ───────────────────────────────
 function shiftWk(d){ S.wkOff+=d; renderSched(); }
 function resetWk(){ S.wkOff=0; renderSched(); }
-function wkDates(off){
-  const t=new Date(), sun=new Date(t); sun.setDate(t.getDate()-t.getDay()+off*7);
-  return Array.from({length:7},(_,i)=>{ const d=new Date(sun); d.setDate(sun.getDate()+i); return d; });
+function dayDate(off){
+  const t=new Date(); t.setHours(0,0,0,0); t.setDate(t.getDate()+off); return t;
 }
 function renderSched(){
-  const wk=wkDates(S.wkOff);
-  const ms=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const day=dayDate(S.wkOff);
   document.getElementById('wkLabel').textContent=
-    `${DAYSS[wk[0].getDay()]} ${ms[wk[0].getMonth()]} ${wk[0].getDate()} – `+
-    `${DAYSS[wk[6].getDay()]} ${ms[wk[6].getMonth()]} ${wk[6].getDate()}, ${wk[6].getFullYear()}`;
+    `${DAYSL[day.getDay()]}, ${MONTHS[day.getMonth()]} ${day.getDate()}, ${day.getFullYear()}`;
   const fb=document.getElementById('fBar');
   if(!fb.children.length){
     fb.innerHTML=`<span class="chip on" onclick="setFilt('all',this)">All Fields</span>
@@ -1598,21 +1595,14 @@ function renderSched(){
       <span class="chip" onclick="setFilt('c4',this)">#4 Complex</span>
       <span class="chip" onclick="setFilt('c5',this)">#5 Complex</span>`;
   }
-  const wkS=fd(wk[0]), wkE=fd(wk[6]);
-  let bks=loadBK().filter(b=>b.status!=='denied'&&b.date>=wkS&&b.date<=wkE);
+  const dayStr=fd(day);
+  let bks=loadBK().filter(b=>b.status!=='denied'&&b.date===dayStr);
   if(S.schedFilt!=='all') bks=bks.filter(b=>{ const d=DIAMONDS.find(x=>x.id===b.diamond); return d&&d.group===S.schedFilt; });
   const _dOrder={}; DIAMONDS.forEach((d,i)=>_dOrder[d.id]=i);
-  bks.sort((a,b)=>a.date.localeCompare(b.date)||a.start.localeCompare(b.start)||(_dOrder[a.diamond]??99)-(_dOrder[b.diamond]??99));
-  if(!bks.length){ document.getElementById('schedContent').innerHTML='<div class="empty"><div class="ei">&#128219;</div><p>No bookings this week.</p></div>'; return; }
-  const byDate={};
-  bks.forEach(b=>{ if(!byDate[b.date]) byDate[b.date]=[]; byDate[b.date].push(b); });
+  bks.sort((a,b)=>(_dOrder[a.diamond]??99)-(_dOrder[b.diamond]??99)||a.start.localeCompare(b.start));
+  if(!bks.length){ document.getElementById('schedContent').innerHTML='<div class="empty"><div class="ei">&#128219;</div><p>No bookings on this day.</p></div>'; return; }
   let h='';
-  Object.keys(byDate).sort().forEach(dt=>{
-    const d=new Date(dt+'T00:00:00');
-    h+=`<div class="day-block"><div class="day-lbl">${DAYSL[d.getDay()]}, ${MONTHS[d.getMonth()]} ${d.getDate()}</div>`;
-    byDate[dt].forEach(b=>{ h+=bkHtml(b,false); });
-    h+='</div>';
-  });
+  bks.forEach(b=>{ h+=bkHtml(b,false); });
   document.getElementById('schedContent').innerHTML=h;
 }
 function setFilt(f,el){ S.schedFilt=f; document.querySelectorAll('#fBar .chip').forEach(c=>c.classList.remove('on')); el.classList.add('on'); renderSched(); }
