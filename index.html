@@ -1926,7 +1926,8 @@ function renderAdmin(){
   document.getElementById('pendingList').innerHTML=pending.length
     ?pending.map(b=>bkHtml(b,true)).join('')
     :'<div class="empty" style="padding:20px"><div class="ei">&#127881;</div><p>No pending requests.</p></div>';
-  let fil=[...all].sort((a,b)=>a.date.localeCompare(b.date)||a.start.localeCompare(b.start));
+  const _dOrd={}; DIAMONDS.forEach((d,i)=>_dOrd[d.id]=i);
+  let fil=[...all].sort((a,b)=>a.date.localeCompare(b.date)||(_dOrd[a.diamond]??99)-(_dOrd[b.diamond]??99)||a.start.localeCompare(b.start));
   if(dF) fil=fil.filter(b=>b.diamond===dF);
   if(sF) fil=fil.filter(b=>b.status===sF);
   if(tF==='booking') fil=fil.filter(b=>b.bkType!=='FieldClosure');
