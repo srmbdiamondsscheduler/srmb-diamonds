@@ -81,7 +81,10 @@
                  border-radius:3px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;
                  color:var(--navy);background:rgba(0,0,0,.045);border-left:3px solid #aaa;
                  min-width:0;max-width:100%;display:block}
-    .cal-bk-item.pend{background:#fef3cd;color:#7d5a00;border-left-style:dashed;font-style:italic;opacity:.9}
+    .cal-bk-item.bkt-game{background:#d4edda;color:#155724;border-left-color:#28a745 !important}
+    .cal-bk-item.bkt-practice{background:#cce5ff;color:#004085;border-left-color:#0d6efd !important}
+    .cal-bk-item.bkt-tournament{background:#fff3cd;color:#856404;border-left-color:#ffc107 !important}
+    .cal-bk-item.pend{background:#fef3cd !important;color:#7d5a00 !important;border-left-style:dashed !important;font-style:italic;opacity:.9}
     .cal-bk-item.closure{background:#fde8e8;color:#922b21;border-left-color:#c0392b !important;font-weight:700;border-left-style:solid !important}
     .cal-bk-t{font-weight:700;margin-right:2px}
     .cal-bk-d{color:#555}
@@ -363,6 +366,9 @@
     <p style="font-size:.75rem;color:var(--dgray);margin-top:10px">
       &#9978; = Outfield section using temporary fencing within a larger diamond &mdash; ideal for younger players.
       &nbsp;&#9203; = Pending approval (yellow, dashed border) &nbsp;&bull;&nbsp; Solid colour = Approved.
+      &nbsp;&bull;&nbsp; <span style="background:#d4edda;color:#155724;padding:1px 5px;border-radius:3px;font-size:.72rem;font-weight:600">Green = Game</span>
+      &nbsp;<span style="background:#cce5ff;color:#004085;padding:1px 5px;border-radius:3px;font-size:.72rem;font-weight:600">Blue = Practice</span>
+      &nbsp;<span style="background:#fff3cd;color:#856404;padding:1px 5px;border-radius:3px;font-size:.72rem;font-weight:600">Yellow = Tournament</span>
     </p>
   </div>
 </div>
@@ -660,8 +666,13 @@
     </div>
 
     <div class="card">
-      <div class="card-title">Pending Requests</div>
-      <div id="pendingList"></div>
+      <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none" onclick="togglePendingPanel()">
+        <span>Pending Requests</span>
+        <span id="pendingPanelArrow" style="font-size:.85rem;transform:rotate(90deg);transition:transform .25s">&#9654;</span>
+      </div>
+      <div id="pendingPanelBody">
+        <div id="pendingList"></div>
+      </div>
     </div>
     <div class="card">
       <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
@@ -696,6 +707,26 @@
         <button class="btn btn-sm" id="bulkDelBtn" style="display:none;background:var(--red);color:#fff;border-color:var(--red)" onclick="bulkDelete()">&#128465; Delete selected (<span id="selCount">0</span>)</button>
       </div>
       <div id="allList"></div>
+    </div>
+
+    <!-- ID GENERATOR TOOL -->
+    <div class="card">
+      <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none" onclick="toggleIdGenPanel()">
+        <span>&#128273; Generate Booking IDs for Manual Entries</span>
+        <span id="idGenArrow" style="font-size:.85rem;transform:rotate(0deg);transition:transform .25s">&#9654;</span>
+      </div>
+      <div id="idGenBody" style="display:none;margin-top:10px">
+        <p style="font-size:.82rem;color:var(--dgray);margin-bottom:10px">Use these IDs when manually adding rows directly to the Google Sheet. Each ID is unique and will not conflict with existing bookings.</p>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+          <label style="font-size:.83rem;font-weight:600;color:var(--navy)">How many IDs?</label>
+          <input type="number" id="idGenCount" value="10" min="1" max="100"
+            style="width:70px;border:1.5px solid var(--mid);border-radius:7px;padding:5px 8px;font-family:inherit;font-size:.83rem">
+          <button class="btn btn-p btn-sm" onclick="generateIds()">&#128273; Generate</button>
+          <button class="btn btn-o btn-sm" onclick="copyIds()">&#128203; Copy All</button>
+        </div>
+        <div id="idGenOutput" style="font-family:monospace;font-size:.8rem;background:#f4f6fb;border-radius:8px;padding:12px;white-space:pre-wrap;line-height:1.8;min-height:40px;color:var(--navy);border:1.5px solid var(--mid)"></div>
+        <p style="font-size:.75rem;color:var(--dgray);margin-top:8px">&#9432; Paste these into the <strong>id</strong> column of your Google Sheet. Format matches existing IDs (e.g. BKM3X4Y5Z).</p>
+      </div>
     </div>
   </div>
 </div>
@@ -1248,7 +1279,8 @@ function _doRenderCal(gridId, labelId){
       const div=divAbbr(b.division);
       const lname=lastName(b.contact);
       const isPend=b.status==='pending';
-      chips+=`<div class="cal-bk-item${isPend?' pend':''}" style="${isPend?'':'border-left-color:'+color}" title="${b.teamName} — ${bestLabel(b.diamond,b.dLabel)} — ${fmt12(b.start)}–${fmt12(b.end)}${isPend?' (pending approval)':''}">`+
+      const typeClass=isPend?'':b.bkType==='Game'?' bkt-game':b.bkType==='Practice'?' bkt-practice':b.bkType==='Tournament'?' bkt-tournament':'';
+      chips+=`<div class="cal-bk-item${isPend?' pend':typeClass}" style="${isPend||typeClass?'':'border-left-color:'+color}" title="${b.teamName} — ${bestLabel(b.diamond,b.dLabel)} — ${fmt12(b.start)}–${fmt12(b.end)}${isPend?' (pending approval)':''}">`+
              `<span class="cal-bk-t">${isPend?'⏳ ':''}${dNum}</span>`+
              `<span class="cal-bk-d"> ${[time,div,lname].filter(Boolean).join(' · ')}</span>`+
              `</div>`;
@@ -1279,6 +1311,12 @@ function pickDay(ds){
   const dd=document.getElementById('dayDetail');
   dd.style.display='block';
   setTimeout(()=>dd.scrollIntoView({behavior:'smooth',block:'nearest'}),50);
+  // If admin is logged in, auto-filter All Bookings to the selected date
+  if(S.adminIn){
+    const from=document.getElementById('aFiltFrom');
+    const to=document.getElementById('aFiltTo');
+    if(from&&to){ from.value=ds; to.value=ds; renderAdmin(); }
+  }
 }
 
 function renderDayDetail(ds){
@@ -1323,6 +1361,7 @@ function renderDayDetail(ds){
     if(diaBks.length){
       chips=diaBks.map(b=>{
         const isPend=b.status==='pending';
+      const typeClass=isPend?'':b.bkType==='Game'?' bkt-game':b.bkType==='Practice'?' bkt-practice':b.bkType==='Tournament'?' bkt-tournament':'';
         return `<span class="bk-chip" style="background:${dia.color};opacity:${isPend?.5:1}"
           title="${b.contact} · ${b.phone}${isPend?' (pending approval)':' (approved)'}">
           ${fmt12(b.start)}–${fmt12(b.end)} &nbsp;${b.teamName}${isPend?' &#8987;':''}
@@ -1353,6 +1392,12 @@ function renderDayDetail(ds){
 function closeDay(){
   document.getElementById('dayDetail').style.display='none';
   S.selDate=null; renderCal();
+  // Clear the auto-applied date filter in admin
+  if(S.adminIn){
+    const from=document.getElementById('aFiltFrom');
+    const to=document.getElementById('aFiltTo');
+    if(from&&to){ from.value=''; to.value=''; renderAdmin(); }
+  }
 }
 
 function bookFromDay(){
@@ -1837,6 +1882,37 @@ function toggleClosurePanel(){
   const open=body.style.display==='none';
   body.style.display=open?'block':'none';
   arrow.style.transform=open?'rotate(90deg)':'rotate(0deg)';
+}
+function togglePendingPanel(){
+  const body=document.getElementById('pendingPanelBody');
+  const arrow=document.getElementById('pendingPanelArrow');
+  const open=body.style.display==='none';
+  body.style.display=open?'block':'none';
+  arrow.style.transform=open?'rotate(90deg)':'rotate(0deg)';
+}
+function toggleIdGenPanel(){
+  const body=document.getElementById('idGenBody');
+  const arrow=document.getElementById('idGenArrow');
+  const open=body.style.display==='none';
+  body.style.display=open?'block':'none';
+  arrow.style.transform=open?'rotate(90deg)':'rotate(0deg)';
+  if(open&&!document.getElementById('idGenOutput').textContent.trim()) generateIds();
+}
+function generateIds(){
+  const count=Math.min(100,Math.max(1,parseInt(document.getElementById('idGenCount').value)||10));
+  const ids=[];
+  for(let i=0;i<count;i++) ids.push(newId());
+  document.getElementById('idGenOutput').textContent=ids.join('\n');
+}
+function copyIds(){
+  const text=document.getElementById('idGenOutput').textContent.trim();
+  if(!text){alert('Generate IDs first.');return;}
+  navigator.clipboard.writeText(text).then(()=>alert('IDs copied to clipboard!')).catch(()=>{
+    const ta=document.createElement('textarea');
+    ta.value=text; document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); document.body.removeChild(ta);
+    alert('IDs copied to clipboard!');
+  });
 }
 function doLogout(){ S.adminIn=false; document.getElementById('adminLoginCard').style.display='block'; document.getElementById('adminPanel').style.display='none'; document.getElementById('adminPw').value=''; }
 function renderAdmin(){
